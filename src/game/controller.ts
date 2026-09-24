@@ -22,7 +22,8 @@ import type { Dust, FallingLeaves } from '../render/effects.ts';
 import type { GardenRefs } from '../render/garden.ts';
 import type { PieceObj, PiecesView } from '../render/pieces.ts';
 import type { Stage } from '../render/scene.ts';
-import { ease, tween, wait } from '../render/tween.ts';
+import { ease, setTweenSpeed, tween, wait } from '../render/tween.ts';
+import type { Vfx } from '../render/vfx.ts';
 import { Hud, NAMES, overlay } from '../ui/hud.ts';
 
 export type Mode = 'ai' | 'hotseat';
@@ -67,6 +68,7 @@ export class Controller {
     private garden: GardenRefs,
     private sound: Sound,
     private hud: Hud,
+    private vfx: Vfx,
   ) {
     const el = stage.renderer.domElement;
     el.addEventListener('pointermove', (e) => this.onMove(e));
@@ -492,6 +494,7 @@ export class Controller {
           piece.mesh.rotation.z = -Math.sin(k * Math.PI) * tilt;
           if (victim && !knocked && k > 0.8) {
             knocked = true;
+            this.captureFx(m.card, a, b);
             this.knockOff(victim, a, b);
           }
         },
@@ -507,6 +510,16 @@ export class Controller {
       });
     }
     await cardsP;
+  }
+
+  /** Card-themed capture effect plus a short hit-stop for impact. */
+  private captureFx(card: number, a: THREE.Vector3, b: THREE.Vector3) {
+    const dir = new THREE.Vector3(b.x - a.x, 0, b.z - a.z);
+    if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1);
+    dir.normalize();
+    this.vfx.capture(CARDS[card].name, { at: b.clone().setY(TOP), from: a.clone(), dir });
+    setTweenSpeed(0.2);
+    setTimeout(() => setTweenSpeed(1), 110);
   }
 
   /** The captured stone is flung off the slab and swallowed by the gravel. */

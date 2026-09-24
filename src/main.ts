@@ -9,6 +9,7 @@ import { PiecesView } from './render/pieces.ts';
 import { CardsView } from './render/cards3d.ts';
 import { Dust, Fireflies, FallingLeaves } from './render/effects.ts';
 import { tickTweens } from './render/tween.ts';
+import { Vfx } from './render/vfx.ts';
 import { Controller, type Mode } from './game/controller.ts';
 import { Hud, initSeg, overlay, segValue } from './ui/hud.ts';
 import { Sound } from './audio.ts';
@@ -17,7 +18,8 @@ import { legalMoves } from './engine/game.ts';
 import { squarePos } from './render/board.ts';
 
 // ?fast = large fixed time steps (for automated testing on software renderers)
-const FAST = new URLSearchParams(location.search).has('fast');
+const params = new URLSearchParams(location.search);
+let FIXED_DT = params.has('dt') ? +params.get('dt')! : params.has('fast') ? 0.3 : 0;
 
 async function boot() {
   // Card faces are painted onto canvases, so the brush/serif fonts must be ready first.
@@ -48,7 +50,10 @@ async function boot() {
   const sound = new Sound();
   hud.setMuted(sound.muted);
   hud.initOpponentToggle(store.get('onitama.oppCollapsed') === '1', (c) => store.set('onitama.oppCollapsed', c ? '1' : '0'));
-  const ctl = new Controller(stage, board, pieces, cards, dust, leaves, garden, sound, hud);
+  const vfx = new Vfx(stage.camera, sound);
+  vfx.scale = quality === 'high' ? 1 : 0.6;
+  stage.scene.add(vfx.group);
+  const ctl = new Controller(stage, board, pieces, cards, dust, leaves, garden, sound, hud, vfx);
 
   // ---- menu wiring
   const savedMode = store.get('onitama.mode') ?? 'ai';
@@ -128,7 +133,7 @@ async function boot() {
   stage.renderer.compile(stage.scene, stage.camera);
   const loop = () => {
     timer.update();
-    const dt = FAST ? 0.3 : Math.min(timer.getDelta(), 0.05);
+    const dt = FIXED_DT || Math.min(timer.getDelta(), 0.05);
     t += dt;
     tickTweens(dt);
     stage.controls.update();
@@ -140,11 +145,14 @@ async function boot() {
     flies.update(t);
     flies.setPixelScale(stage.renderer.getPixelRatio() * (app.clientHeight / 900));
     ctl.update(dt, t);
+    vfx.update(dt, t);
+    vfx.preRender();
     stage.render(t);
+    vfx.postRender();
     requestAnimationFrame(loop);
   };
   // expose for debugging / automated checks
-  (window as any).__onitama = { ctl, stage, cards, legalMoves, squarePos };
+  (window as any).__onitama = { ctl, stage, cards, legalMoves, squarePos, vfx, setDt: (d: number) => (FIXED_DT = d) };
   loop();
 
   requestAnimationFrame(() => {

@@ -128,6 +128,84 @@ export class Sound {
     }
   }
 
+  /** Synthesised one-shots for the card capture effects. */
+  fx(kind: 'slash' | 'fire' | 'water' | 'whoosh' | 'snap' | 'boom' | 'shimmer' | 'hoof' | 'zap' | 'hiss') {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    switch (kind) {
+      case 'slash':
+        for (let i = 0; i < 3; i++) {
+          const f = this.noise(0.16, t + i * 0.06, this.sfx, 'bandpass', 2500, 1.2, 0.35, 0.01);
+          f.frequency.exponentialRampToValueAtTime(7000, t + i * 0.06 + 0.12);
+        }
+        break;
+      case 'fire': {
+        const f = this.noise(1.3, t, this.sfx, 'bandpass', 300, 0.8, 0.55, 0.08);
+        f.frequency.exponentialRampToValueAtTime(1400, t + 0.5);
+        f.frequency.exponentialRampToValueAtTime(500, t + 1.3);
+        this.noise(1.2, t, this.sfx, 'lowpass', 220, 0.7, 0.5, 0.05);
+        for (let i = 0; i < 14; i++) this.noise(0.03, t + Math.random() * 1.1, this.sfx, 'highpass', 3500, 1, 0.12);
+        break;
+      }
+      case 'water':
+        this.tone(380, t, 0.14, 0.22, 'sine', this.sfx, 950);
+        this.tone(520, t + 0.08, 0.12, 0.14, 'sine', this.sfx, 1200);
+        this.noise(0.5, t, this.sfx, 'highpass', 2500, 0.6, 0.22, 0.01);
+        for (let i = 0; i < 6; i++) this.tone(900 + Math.random() * 900, t + 0.15 + Math.random() * 0.4, 0.06, 0.05, 'sine', this.sfx, 1800);
+        break;
+      case 'whoosh': {
+        const f = this.noise(0.4, t, this.sfx, 'bandpass', 500, 1.5, 0.35, 0.12);
+        f.frequency.exponentialRampToValueAtTime(3000, t + 0.3);
+        break;
+      }
+      case 'snap':
+        this.noise(0.04, t, this.sfx, 'bandpass', 4200, 2, 0.7);
+        this.noise(0.04, t + 0.035, this.sfx, 'bandpass', 3000, 2, 0.5);
+        this.tone(1600, t, 0.06, 0.12, 'triangle', this.sfx, 700);
+        break;
+      case 'boom':
+        this.tone(70, t, 0.9, 0.55, 'sine', this.sfx, 32);
+        this.noise(0.7, t, this.sfx, 'lowpass', 400, 0.7, 0.6, 0.005);
+        break;
+      case 'shimmer':
+        for (let i = 0; i < 7; i++) {
+          const f = [1318.5, 1568, 1760, 1975.5, 2349.3, 2637][Math.floor(Math.random() * 6)];
+          this.tone(f, t + i * 0.05, 1.2, 0.035, 'sine');
+        }
+        break;
+      case 'hoof':
+        this.tone(160, t, 0.07, 0.3, 'sine', this.sfx, 90);
+        this.noise(0.05, t, this.sfx, 'bandpass', 1200, 1.5, 0.3);
+        break;
+      case 'zap': {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        for (let i = 0; i < 14; i++) {
+          const tt = t + i * 0.045;
+          o.frequency.setValueAtTime(60 + Math.random() * 180, tt);
+          g.gain.setValueAtTime(Math.random() < 0.7 ? 0.14 : 0.02, tt);
+        }
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 300;
+        o.connect(hp).connect(g).connect(this.sfx);
+        o.start(t);
+        o.stop(t + 0.75);
+        for (let i = 0; i < 8; i++) this.noise(0.03, t + Math.random() * 0.6, this.sfx, 'highpass', 5000, 1, 0.25);
+        break;
+      }
+      case 'hiss': {
+        const f = this.noise(0.9, t, this.sfx, 'highpass', 4500, 0.8, 0.28, 0.15);
+        f.frequency.linearRampToValueAtTime(6500, t + 0.8);
+        break;
+      }
+    }
+  }
+
   private startAmbience() {
     const ctx = this.ctx!;
     // wind: filtered noise with slow swells

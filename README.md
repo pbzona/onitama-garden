@@ -20,6 +20,23 @@ Click a card, then a stone, then a glowing square (the card and stone can be pic
 - If no legal move exists, you still have to exchange a card.
 - You win by the **Way of the Stone** (capture the enemy Master) or the **Way of the Stream** (your Master reaches the enemy temple).
 
+## Capture effects
+
+Every capture plays an effect themed on the card that made it, with a short hit-stop:
+
+| Card | Effect | Card | Effect |
+|---|---|---|---|
+| Tiger 虎 | three raking claw slashes | Monkey 猿 | spinning staff, smoke puff, orbiting stars |
+| Dragon 龍 | swirling firestorm, embers and smoke | Mantis 螳 | twin jade scythes slash an X |
+| Frog 蛙 | ripples and a splash of droplets | Horse 馬 | glowing hoofprints gallop in, hoof-strike wave |
+| Rabbit 兎 | a pale moon flares, speed lines rush past | Ox 牛 | spectral horns heave up, the slate cracks |
+| Crab 蟹 | translucent pincers close in and snap | Crane 鶴 | serene halo, spiralling feathers, red crown |
+| Elephant 象 | ground-shaking stomp and shockwave | Boar 猪 | tusks thrust, a wedge of dust and rock |
+| Goose 雁 | sweeping wings of light, drifting feathers | Eel 鰻 | crackling blue lightning |
+| Rooster 鶏 | a dawn sunburst of golden rays | Cobra 蛇 | a serpent coils up and strikes, venom mist |
+
+All effects live in `src/render/vfx.ts`: a small instanced-particle system, additive "ink-spirit" meshes, shockwave rings, light flashes and camera shake. The matching sounds are synthesised in `src/audio.ts` (`Sound.fx`). `node scripts/fxsheet.mjs all` renders a screenshot of each effect.
+
 ## Develop
 
 ```bash
@@ -43,6 +60,7 @@ src/
   render/     scene.ts (renderer, dusk sky, lights, bloom/grade), sand.ts (raked gravel shader),
               materials.ts (procedural stone), board.ts, pieces.ts, cards3d.ts, garden.ts
               (rocks, moss, lantern, maple, niwaki pines, wall), effects.ts (dust, leaves, fireflies), tween.ts
+  render/vfx.ts  card-themed capture effects
   game/       controller.ts: input, selection, animation choreography, AI turns, undo, victory
   ui/         hud.ts, style.css
   audio.ts    procedural WebAudio
