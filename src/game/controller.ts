@@ -35,8 +35,12 @@ interface HistoryEntry {
   move: Move;
 }
 
-const CAM_RADIUS = 13.1;
-const CAM_PHI = 0.9;
+const CAM_RADIUS = 14.7; // pulled back a little from the original 13.1
+const CAM_PHI = 0.82; // and a touch higher, so tall stones hide less of the board
+const TOP_RADIUS = 15.5;
+const TOP_PHI = 0.05;
+const AZ_LIMIT = 1.75; // how far (rad) you can orbit away from your seat mid-game
+const NUDGE_AFTER = 6; // seconds of no camera input before drifting back to your side
 
 export class Controller {
   state: GameState = newGame();
@@ -83,6 +87,13 @@ export class Controller {
       if (moved < 10 && e.timeStamp - this.down.t < 900) this.onClick(e);
     });
     el.addEventListener('pointerleave', () => this.setHover(null));
+    el.addEventListener('dblclick', (e) => {
+      if (!this.pick(e as PointerEvent)) this.recenter();
+    });
+    stage.controls.addEventListener('start', () => this.noteCameraInput());
+    stage.controls.addEventListener('change', () => {
+      if (!this.camAnimating) this.noteCameraInput();
+    });
     try {
       this.worker = new AIWorker();
       this.worker.onmessage = (e) => this.onAI(e.data);
@@ -653,7 +664,26 @@ export class Controller {
     this.beginTurn();
   }
 
-  turnCamera(pl: Player, dur: number) {
+  // ------------------------------------------------------------ camera views
+
+  topView = false;
+  private camAnimating = false;
+  private lastCamInput = 0;
+  private clock = 0;
+
+  /** Whose seat the camera belongs to right now. */
+  private homePlayer(): Player {
+    return this.mode === 'ai' ? 0 : this.state.turn;
+  }
+
+  private setAzimuthLimits(theta: number | null) {
+    const c = this.stage.controls;
+    c.minAzimuthAngle = theta === null ? -Infinity : theta - AZ_LIMIT;
+    c.maxAzimuthAngle = theta === null ? Infinity : theta + AZ_LIMIT;
+  }
+
+  /** Ease the camera to a player's seat (default or top-down view). keepZoom only restores the heading. */
+  animateView(pl: Player, dur: number, keepZoom = false) {
     const cam = this.stage.camera;
     const target = this.stage.controls.target;
     const off = cam.position.clone().sub(target);
@@ -662,18 +692,59 @@ export class Controller {
     while (th1 - sph.theta > Math.PI) th1 -= Math.PI * 2;
     while (sph.theta - th1 > Math.PI) th1 += Math.PI * 2;
     const th0 = sph.theta, ph0 = sph.phi, r0 = sph.radius;
-    const rTarget = this.stage.camera.aspect < 1 ? CAM_RADIUS * 1.25 : CAM_RADIUS;
+    const portrait = this.stage.camera.aspect < 1 ? 1.25 : 1;
+    const ph1 = keepZoom ? ph0 : this.topView ? TOP_PHI : CAM_PHI;
+    const r1 = keepZoom ? r0 : (this.topView ? TOP_RADIUS : CAM_RADIUS) * portrait;
     this.stage.controls.enabled = false;
+    this.camAnimating = true;
+    this.setAzimuthLimits(null);
     return tween(dur, (k) => {
       sph.theta = th0 + (th1 - th0) * k;
-      sph.phi = ph0 + (CAM_PHI - ph0) * k;
-      sph.radius = r0 + (rTarget - r0) * k;
+      sph.phi = ph0 + (ph1 - ph0) * k;
+      sph.radius = r0 + (r1 - r0) * k;
       cam.position.setFromSpherical(sph).add(target);
       cam.lookAt(target);
     }, { ease: ease.inOutCubic }).then(() => {
+      this.camAnimating = false;
+      if (this.playing && this.state.winner === -1) this.setAzimuthLimits(pl === 0 ? 0 : Math.PI);
       this.stage.controls.enabled = true;
       this.stage.controls.update();
+      this.lastCamInput = this.clock;
     });
+  }
+
+  turnCamera(pl: Player, dur: number) {
+    return this.animateView(pl, dur);
+  }
+
+  recenter() {
+    if (this.camAnimating || this.stage.controls.autoRotate) return;
+    this.animateView(this.homePlayer(), 0.7);
+  }
+
+  toggleTopView() {
+    if (this.camAnimating || this.stage.controls.autoRotate) return this.topView;
+    this.topView = !this.topView;
+    this.animateView(this.homePlayer(), 0.8);
+    return this.topView;
+  }
+
+  /** Called on user camera input (OrbitControls 'start'/'change'). */
+  noteCameraInput() {
+    this.lastCamInput = this.clock;
+  }
+
+  private nudgeCamera() {
+    if (!this.playing || this.camAnimating || this.state.winner !== -1 || this.stage.controls.autoRotate) return;
+    if (this.clock - this.lastCamInput < NUDGE_AFTER) return;
+    const off = this.stage.camera.position.clone().sub(this.stage.controls.target);
+    const theta = new THREE.Spherical().setFromVector3(off).theta;
+    const home = this.homePlayer() === 0 ? 0 : Math.PI;
+    let d = theta - home;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    if (Math.abs(d) > 0.3) this.animateView(this.homePlayer(), 1.4, true);
+    else this.lastCamInput = this.clock;
   }
 
   private async victory() {
@@ -691,6 +762,7 @@ export class Controller {
     this.hud.setTurn(w, s.reason === 'stone' ? 'Way of the Stone' : 'Way of the Stream');
     this.hud.hint('');
     this.hud.undoBtn.disabled = false;
+    this.setAzimuthLimits(null);
     this.stage.controls.autoRotate = true;
     this.stage.controls.autoRotateSpeed = 0.35;
     await wait(1.8);
@@ -704,6 +776,8 @@ export class Controller {
   }
 
   update(dt: number, t: number) {
+    this.clock += dt;
+    this.nudgeCamera();
     this.garden.leafUniforms.uTime.value = t;
     // candle flicker
     const L = this.garden.lanternLight;

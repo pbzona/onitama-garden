@@ -57,6 +57,10 @@ export function buildGarden(): GardenRefs {
     { x: 7.4, z: -4.6, rocks: [[0, 0, 1.0, 1.4, 0.85], [-1.1, 0.5, 0.55, 0.45, 0.6]] },
     { x: 7.2, z: 3.4, rocks: [[0, 0, 0.7, 0.45, 0.65]] },
     { x: -3.2, z: -7.2, rocks: [[0, 0, 0.9, 0.6, 0.7], [1.0, -0.3, 0.45, 0.35, 0.45]] },
+    // near side & flanks, seen when orbiting
+    { x: 9.6, z: 8.8, rocks: [[0, 0, 1.1, 0.8, 0.9], [1.2, -0.5, 0.5, 0.4, 0.5], [-0.8, 0.7, 0.35, 0.25, 0.4]] },
+    { x: -11.2, z: -2.0, rocks: [[0, 0, 0.8, 1.1, 0.7]] },
+    { x: 3.2, z: 10.6, rocks: [[0, 0, 0.6, 0.4, 0.55], [0.9, 0.3, 0.35, 0.25, 0.35]] },
   ];
   let seed = 3;
   for (const set of rockSets) {
@@ -158,23 +162,39 @@ export function buildGarden(): GardenRefs {
   const pine2 = buildNiwaki(9, 0.75);
   pine2.position.set(3.6, 0, -10.2);
   group.add(pine2);
+  const pine3 = buildNiwaki(13, 0.9);
+  pine3.position.set(-10.4, 0, 9.4);
+  pine3.rotation.y = 2.2;
+  group.add(pine3);
+  const pm3 = new THREE.Mesh(mossMound(1.2, 31), mMat);
+  pm3.position.set(-10.4, -0.02, 9.4);
+  group.add(pm3);
+  features.push({ x: -10.4, z: 9.4, r: 1.5 });
+  const pine4 = buildNiwaki(21, 0.7);
+  pine4.position.set(11.2, 0, -3.4);
+  pine4.rotation.y = -1.1;
+  group.add(pine4);
 
   // ---------------------------------------------------------------- garden wall (tsuiji-bei)
-  group.add(buildWall());
+  group.add(buildWalls());
 
   // distant tree line beyond the wall: clustered canopies merged into one mesh
   const farGeos: THREE.BufferGeometry[] = [];
-  for (let i = 0; i < 22; i++) {
-    const cx = -28 + i * 2.6 + rr(-0.8, 0.8);
-    const cz = -16 - rr(0, 6);
+  const treeCount = 64;
+  for (let i = 0; i < treeCount; i++) {
+    const ang = (i / treeCount) * Math.PI * 2 + rr(-0.03, 0.03);
+    // square-ish ring just outside the walls
+    const rad = rr(17.5, 23) / Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)), 0.75) * 0.82;
+    const cx = Math.cos(ang) * rad;
+    const cz = Math.sin(ang) * rad;
     const hgt = rr(3.5, 6.5);
     const blobs = 5 + Math.floor(rng() * 4);
     for (let b = 0; b < blobs; b++) {
       const s = rr(0.9, 1.7);
       const g = boulderGeometry(i * 13.1 + b * 3.7, s * 1.2, s, s * 1.2, 2, 0.5);
       const a = rng() * Math.PI * 2;
-      const rad = rr(0.2, 1.4);
-      g.translate(cx + Math.cos(a) * rad, hgt * rr(0.55, 1.0), cz + Math.sin(a) * rad);
+      const r2 = rr(0.2, 1.4);
+      g.translate(cx + Math.cos(a) * r2, hgt * rr(0.55, 1.0), cz + Math.sin(a) * r2);
       farGeos.push(g);
     }
   }
@@ -348,68 +368,96 @@ function buildNiwaki(seed: number, scale: number) {
 
 // ---------------------------------------------------------------- wall
 
-function buildWall() {
+/** Garden enclosure: four tsuiji-bei walls (tile-capped plaster on a stone footing). */
+const WALL_HALF = 14;
+function buildWalls() {
   const g = new THREE.Group();
-  const L = 44;
-  const z = -12.5;
+  const L = WALL_HALF * 2 + 0.6;
   const plaster = stoneMaterial({ base: 0xe0c89c, dark: 0xbfa276, speck1: 0xd9c9a6, speck2: 0x8f7a58, scale: 0.35, speckScale: 6, speckAmount: 0.15, roughness: 0.95, bump: 0.02, strata: 3 });
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(L, 2.4, 0.55), plaster);
-  wall.position.set(0, 1.2, z);
-  wall.receiveShadow = true;
-  g.add(wall);
-  // horizontal sujibei lines
   const lineMat = new THREE.MeshStandardMaterial({ color: 0xe9dfc9, roughness: 0.9 });
-  for (let i = 0; i < 3; i++) {
-    const l = new THREE.Mesh(new THREE.BoxGeometry(L, 0.035, 0.02), lineMat);
-    l.position.set(0, 1.55 + i * 0.16, z + 0.285);
-    g.add(l);
-  }
   const baseMat = stoneMaterial({ base: 0x6f6a60, dark: 0x4f4b44, speck1: 0x8a8578, speck2: 0x33302b, scale: 1.2, speckScale: 16, speckAmount: 0.5, roughness: 0.9, bump: 0.05 });
-  const base = new THREE.Mesh(new THREE.BoxGeometry(L, 0.42, 0.75), baseMat);
-  base.position.set(0, 0.21, z + 0.02);
-  base.receiveShadow = true;
-  g.add(base);
-  // roof: gable prism + round tiles
   const tileMat = new THREE.MeshStandardMaterial({ color: 0x3c4046, roughness: 0.55, metalness: 0.15 });
-  const shape = new THREE.Shape();
-  shape.moveTo(-0.75, 0);
-  shape.lineTo(0.75, 0);
-  shape.lineTo(0.0, 0.38);
-  shape.closePath();
-  const roof = new THREE.ExtrudeGeometry(shape, { depth: L, bevelEnabled: false });
-  roof.rotateY(Math.PI / 2);
-  roof.translate(-L / 2, 2.4, z);
-  const rm = new THREE.Mesh(roof, tileMat);
-  rm.castShadow = rm.receiveShadow = true;
-  g.add(rm);
-  const tileGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.86, 8, 1, false, 0, Math.PI);
-  const n = Math.floor(L / 0.19);
-  const tiles = new THREE.InstancedMesh(tileGeo, tileMat, n * 2);
-  const m4 = new THREE.Matrix4();
-  const qq = new THREE.Quaternion();
-  const slope = Math.atan2(0.38, 0.75);
-  for (let side = 0; side < 2; side++) {
-    const sgn = side ? 1 : -1;
-    for (let i = 0; i < n; i++) {
-      const x = -L / 2 + (i + 0.5) * 0.19;
-      qq.setFromEuler(new THREE.Euler(Math.PI / 2 - sgn * slope + (sgn > 0 ? 0 : 0), 0, 0, 'XYZ'));
-      // orient cylinder along the slope (local Y → down-slope direction)
-      const e = new THREE.Euler(sgn * (Math.PI / 2 - slope), 0, 0);
-      qq.setFromEuler(e);
-      m4.compose(new THREE.Vector3(x, 2.4 + 0.2, z + sgn * 0.37), qq, new THREE.Vector3(1, 1, 1));
-      tiles.setMatrixAt(side * n + i, m4);
+  const moss = mossMat();
+  const segment = (seed: number) => {
+    // built along X, inner (garden) face towards +Z
+    const w = new THREE.Group();
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(L, 2.4, 0.55), plaster);
+    wall.position.set(0, 1.2, 0);
+    wall.receiveShadow = true;
+    wall.castShadow = true;
+    w.add(wall);
+    for (let i = 0; i < 3; i++) {
+      for (const side of [1, -1]) {
+        const l = new THREE.Mesh(new THREE.BoxGeometry(L, 0.035, 0.02), lineMat);
+        l.position.set(0, 1.55 + i * 0.16, side * 0.285);
+        w.add(l);
+      }
     }
-  }
-  tiles.castShadow = true;
-  g.add(tiles);
-  const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, L, 10), tileMat);
-  ridge.rotation.z = Math.PI / 2;
-  ridge.position.set(0, 2.8, z);
-  g.add(ridge);
-  // moss strip at the foot of the wall
-  const mstrip = new THREE.Mesh(boulderGeometry(77, L / 2, 0.12, 1.1, 4, 0.2), mossMat());
-  mstrip.position.set(0, -0.03, z + 1.0);
-  mstrip.receiveShadow = true;
-  g.add(mstrip);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(L, 0.42, 0.75), baseMat);
+    base.position.set(0, 0.21, 0);
+    base.receiveShadow = true;
+    w.add(base);
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.75, 0);
+    shape.lineTo(0.75, 0);
+    shape.lineTo(0.0, 0.38);
+    shape.closePath();
+    const roof = new THREE.ExtrudeGeometry(shape, { depth: L, bevelEnabled: false });
+    roof.rotateY(Math.PI / 2);
+    roof.translate(-L / 2, 2.4, 0);
+    const rm = new THREE.Mesh(roof, tileMat);
+    rm.castShadow = rm.receiveShadow = true;
+    w.add(rm);
+    const tileGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.86, 8, 1, false, 0, Math.PI);
+    const n = Math.floor(L / 0.19);
+    const tiles = new THREE.InstancedMesh(tileGeo, tileMat, n * 2);
+    const m4 = new THREE.Matrix4();
+    const qq = new THREE.Quaternion();
+    const slope = Math.atan2(0.38, 0.75);
+    for (let side = 0; side < 2; side++) {
+      const sgn = side ? 1 : -1;
+      qq.setFromEuler(new THREE.Euler(sgn * (Math.PI / 2 - slope), 0, 0));
+      for (let i = 0; i < n; i++) {
+        m4.compose(new THREE.Vector3(-L / 2 + (i + 0.5) * 0.19, 2.6, sgn * 0.37), qq, new THREE.Vector3(1, 1, 1));
+        tiles.setMatrixAt(side * n + i, m4);
+      }
+    }
+    tiles.castShadow = true;
+    w.add(tiles);
+    const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, L, 10), tileMat);
+    ridge.rotation.z = Math.PI / 2;
+    ridge.position.set(0, 2.8, 0);
+    w.add(ridge);
+    const mstrip = new THREE.Mesh(boulderGeometry(77 + seed, L / 2 - 1, 0.12, 1.1, 4, 0.2), moss);
+    mstrip.position.set(0, -0.03, 1.0);
+    mstrip.receiveShadow = true;
+    w.add(mstrip);
+    return w;
+  };
+  const place: [number, number, number][] = [
+    [0, -WALL_HALF, 0], // back
+    [0, WALL_HALF, Math.PI], // front
+    [-WALL_HALF, 0, Math.PI / 2], // left
+    [WALL_HALF, 0, -Math.PI / 2], // right
+  ];
+  place.forEach(([x, z, ry], i) => {
+    const w = segment(i * 13);
+    w.position.set(x, 0, z);
+    w.rotation.y = ry;
+    g.add(w);
+  });
+  // squat stone corner posts tidy up where the walls meet
+  const postMat = baseMat;
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.95, 3.0, 0.95), postMat);
+      p.position.set(sx * WALL_HALF, 1.5, sz * WALL_HALF);
+      p.castShadow = p.receiveShadow = true;
+      g.add(p);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.85, 0.5, 4), tileMat);
+      cap.rotation.y = Math.PI / 4;
+      cap.position.set(sx * WALL_HALF, 3.25, sz * WALL_HALF);
+      g.add(cap);
+    }
   return g;
 }

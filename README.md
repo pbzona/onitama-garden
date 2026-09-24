@@ -9,7 +9,9 @@ Everything is procedural: no model, texture, or audio files. The stones are scul
 - **vs the Garden Master (AI)**: Novice / Adept / Sensei. It runs a negamax search with alpha-beta pruning, a transposition table, and iterative deepening in a Web Worker. Sensei searches about 8–10 plies deep.
 - **Two players**: hotseat mode. The camera swings around to whoever is to move.
 
-Click a card, then a stone, then a glowing square (the card and stone can be picked in either order). Hover any card to see it enlarged, oriented from your seat. Drag to orbit and scroll to zoom. Keys: **Z** undo, **H** rules, **M** sound, **Esc** menu.
+Click a card, then a stone, then a glowing square (the card and stone can be picked in either order). Hover any card to see it enlarged, oriented from your seat; the collapsible panel top-right always shows your opponent's cards.
+
+**Camera:** drag to orbit (up to about 100° either side of your seat; after about 6 s it drifts back), scroll to zoom, double-click empty space to recenter. **V** toggles a top-down view and **C** recenters (there are buttons for both too). Other keys: **Z** undo, **H** rules, **M** sound, **Esc** menu.
 
 ### Rules implemented
 
@@ -59,7 +61,7 @@ src/
   engine/     cards.ts, game.ts (pure rules), ai.ts (search), ai.worker.ts
   render/     scene.ts (renderer, dusk sky, lights, bloom/grade), sand.ts (raked gravel shader),
               materials.ts (procedural stone), board.ts, pieces.ts, cards3d.ts, garden.ts
-              (rocks, moss, lantern, maple, niwaki pines, wall), effects.ts (dust, leaves, fireflies), tween.ts
+              (rocks, moss, lantern, maple, niwaki pines, four-sided walled enclosure, tree line), effects.ts (dust, leaves, fireflies), tween.ts
   render/vfx.ts  card-themed capture effects
   game/       controller.ts: input, selection, animation choreography, AI turns, undo, victory
   ui/         hud.ts, style.css

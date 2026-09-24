@@ -35,6 +35,12 @@
           <button id="btn-undo" title="Undo (Z)" aria-label="Undo">
             <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
           </button>
+          <button id="btn-view" title="Top-down view (V)" aria-label="Toggle top-down view">
+            <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1.5" /><path d="M4 9.33h16M4 14.67h16M9.33 4v16M14.67 4v16" /></svg>
+          </button>
+          <button id="btn-recenter" title="Recenter camera (C)" aria-label="Recenter camera">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /><circle cx="12" cy="12" r="8" /></svg>
+          </button>
           <button id="btn-rules" title="How to play (H)" aria-label="Rules">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" /><path d="M9.5 9.2a2.6 2.6 0 1 1 3.4 2.5c-.6.2-.9.8-.9 1.4v.6" /><circle cx="12" cy="17" r=".6" /></svg>
           </button>
@@ -48,6 +54,7 @@
       </div>
       <div id="log" class="log"></div>
       <div id="hint" class="hint"></div>
+      <div id="toast" class="toast"></div>
       <div id="opp" class="opp">
         <button class="opp-head" id="opp-toggle" aria-expanded="true">
           <span class="opp-seal"></span><span class="opp-title">Opponent's cards</span><span class="opp-chev" aria-hidden="true"></span>
@@ -115,7 +122,7 @@
           <div><span class="way-k">石</span><b>Way of the Stone</b>Capture the opposing Master.</div>
           <div><span class="way-k">流</span><b>Way of the Stream</b>Move your Master onto your opponent's temple square, marked with the gold torii.</div>
         </div>
-        <p class="small">The seal on the dealt side card decides who opens: indigo 石 for Granite, vermilion 岩 for Basalt. Controls: click a card, then a stone, then a glowing square. Drag to look around; scroll to zoom. Keys: Z undo, H rules, M sound, Esc menu.</p>
+        <p class="small">The seal on the dealt side card decides who opens: indigo 石 for Granite, vermilion 岩 for Basalt. Controls: click a card, then a stone, then a glowing square. Drag to look around, scroll to zoom, double-click empty space to recenter. Keys: V top-down view, C recenter, Z undo, H rules, M sound, Esc menu.</p>
       </div>
     </div>
 

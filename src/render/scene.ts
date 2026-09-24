@@ -62,7 +62,7 @@ export class Stage {
     this.renderer = r;
 
     this.camera = new THREE.PerspectiveCamera(36, container.clientWidth / container.clientHeight, 0.1, 200);
-    this.camera.position.set(0, 9.2, 9.6);
+    this.camera.position.set(0, 10.2, 11.0);
 
     this.controls = new OrbitControls(this.camera, r.domElement);
     this.controls.target.set(0, 0.2, 0.2);
@@ -70,9 +70,9 @@ export class Stage {
     this.controls.dampingFactor = 0.08;
     this.controls.enablePan = false;
     this.controls.minDistance = 7;
-    this.controls.maxDistance = 22;
-    this.controls.minPolarAngle = 0.35;
-    this.controls.maxPolarAngle = 1.2;
+    this.controls.maxDistance = 18.5; // stay inside the garden walls
+    this.controls.minPolarAngle = 0.02;
+    this.controls.maxPolarAngle = 1.12;
     this.controls.rotateSpeed = 0.55;
 
     // ---- dusk sky
@@ -107,10 +107,10 @@ export class Stage {
     const sm = quality === 'high' ? 4096 : 2048;
     this.sun.shadow.mapSize.set(sm, sm);
     const sc = this.sun.shadow.camera;
-    sc.left = -13;
-    sc.right = 13;
-    sc.top = 11;
-    sc.bottom = -11;
+    sc.left = -16;
+    sc.right = 16;
+    sc.top = 14;
+    sc.bottom = -14;
     sc.near = 1;
     sc.far = 45;
     this.sun.shadow.bias = -0.0004;

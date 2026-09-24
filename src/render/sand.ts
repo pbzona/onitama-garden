@@ -7,7 +7,7 @@ export interface RakeFeature {
   r: number;
 }
 
-const MAX_FEATURES = 12;
+const MAX_FEATURES = 28;
 
 /**
  * Raked-gravel ground (karesansui). Grooves are computed analytically in the fragment shader:

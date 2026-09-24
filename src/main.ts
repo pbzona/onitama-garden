@@ -81,12 +81,30 @@ async function boot() {
     overlay('menu', false);
     overlay('result', false);
     ctl.start(mode, level);
+    if (store.get('onitama.viewHintSeen') !== '1') {
+      store.set('onitama.viewHintSeen', '1');
+      const touch = matchMedia('(pointer: coarse)').matches;
+      setTimeout(
+        () => toast(touch ? 'Drag to look around · pinch to zoom · ▦ top view · ⌖ recenter' : 'Drag to look around · <kbd>V</kbd> top view · <kbd>C</kbd> recenter'),
+        3800,
+      );
+    }
   });
   document.getElementById('btn-resume')!.addEventListener('click', () => overlay('menu', false));
   document.getElementById('btn-howto')!.addEventListener('click', () => overlay('rules', true));
   document.getElementById('btn-rules')!.addEventListener('click', () => overlay('rules', true));
   document.getElementById('btn-menu')!.addEventListener('click', openMenu);
   document.getElementById('btn-undo')!.addEventListener('click', () => ctl.undo());
+  const viewBtn = document.getElementById('btn-view')!;
+  const toggleView = () => viewBtn.classList.toggle('on', ctl.toggleTopView());
+  viewBtn.addEventListener('click', toggleView);
+  document.getElementById('btn-recenter')!.addEventListener('click', () => ctl.recenter());
+  const toast = (html: string, ms = 5200) => {
+    const el = document.getElementById('toast')!;
+    el.innerHTML = html;
+    el.classList.add('on');
+    setTimeout(() => el.classList.remove('on'), ms);
+  };
   document.getElementById('btn-sound')!.addEventListener('click', () => {
     sound.unlock();
     sound.setMuted(!sound.muted);
@@ -113,6 +131,8 @@ async function boot() {
         if (ctl.playing) overlay('menu', false);
       } else openMenu();
     } else if (e.key === 'z' || e.key === 'Z') ctl.undo();
+    else if ((e.key === 'v' || e.key === 'V') && ctl.playing) toggleView();
+    else if ((e.key === 'c' || e.key === 'C') && ctl.playing) ctl.recenter();
     else if (e.key === 'h' || e.key === 'H') overlay('rules', document.getElementById('rules')!.classList.contains('hidden'));
     else if (e.key === 'm' || e.key === 'M') {
       sound.unlock();

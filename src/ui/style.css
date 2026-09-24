@@ -143,3 +143,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .opp-side img { width: 60px; }
   .opp-note { display: none; }
 }
+
+#btn-view.on { background: rgba(217, 165, 74, 0.22); border-color: var(--gold-soft); }
+.toast { position: absolute; left: 50%; top: calc(max(16px, env(safe-area-inset-top)) + 64px); transform: translate(-50%, -6px); padding: 8px 16px; border-radius: 999px; background: var(--charcoal); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--line); font-size: 13px; color: var(--bone); white-space: nowrap; opacity: 0; transition: opacity 0.4s, transform 0.4s; pointer-events: none; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.toast kbd { font-family: var(--sans); font-size: 11.5px; padding: 1px 6px; margin: 0 2px; border-radius: 5px; border: 1px solid var(--line); background: rgba(238,227,204,0.08); }
+@media (max-width: 760px) { .hud-buttons { gap: 6px; } .hud-buttons button { width: 40px; height: 40px; } .toast { top: auto; bottom: 70px; } }
