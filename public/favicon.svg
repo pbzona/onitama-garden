@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="slate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a4147"/>
+      <stop offset="1" stop-color="#22272b"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2c76c"/>
+      <stop offset="1" stop-color="#c98f34"/>
+    </linearGradient>
+  </defs>
+  <!-- slate board tile -->
+  <rect width="64" height="64" rx="14" fill="url(#slate)"/>
+  <rect x="3.5" y="3.5" width="57" height="57" rx="11" fill="none" stroke="#e9dcc2" stroke-opacity="0.16" stroke-width="1.5"/>
+  <!-- vermilion sun -->
+  <circle cx="32" cy="27" r="15" fill="#c8482e"/>
+  <!-- gold torii: the temple arch -->
+  <g fill="url(#gold)">
+    <path d="M8 16.5 Q32 10.5 56 16.5 L54.5 21.5 Q32 16.8 9.5 21.5 Z"/>
+    <rect x="13" y="22.5" width="38" height="3.4" rx="0.8"/>
+    <rect x="30.2" y="21" width="3.6" height="7"/>
+    <rect x="12" y="30" width="40" height="3.6" rx="0.8"/>
+    <path d="M17.3 22 H22.3 L23.4 52.5 H16.4 Z"/>
+    <path d="M41.7 22 H46.7 L47.6 52.5 H40.6 Z"/>
+    <rect x="15" y="51" width="9.6" height="3.4" rx="0.8"/>
+    <rect x="39.4" y="51" width="9.6" height="3.4" rx="0.8"/>
+  </g>
+</svg>

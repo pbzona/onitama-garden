@@ -1,0 +1,27 @@
+{
+  "name": "Onitama · The Stone Garden",
+  "short_name": "Onitama",
+  "description": "A 3D martial-arts strategy duel in a Japanese stone garden.",
+  "start_url": "./",
+  "display": "fullscreen",
+  "background_color": "#14110e",
+  "theme_color": "#1a1714",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

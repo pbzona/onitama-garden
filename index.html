@@ -5,13 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1a1714" />
     <title>Onitama · The Stone Garden</title>
+    <meta name="description" content="A 3D martial-arts strategy duel in a Japanese stone garden. Play the Garden Master AI or a friend, right in your browser." />
+
+    <!-- icons -->
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="./favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./site.webmanifest" />
+
+    <!-- social previews (%SITE_URL% is filled in at build time; see vite.config.ts) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Onitama · The Stone Garden" />
+    <meta property="og:title" content="Onitama · The Stone Garden" />
+    <meta property="og:description" content="A 3D martial-arts strategy duel in a Japanese stone garden. Play the Garden Master AI or a friend, right in your browser." />
+    <meta property="og:image" content="%SITE_URL%og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A slate Onitama board with granite and basalt stones in a raked zen garden at dusk, lit by a stone lantern." />
+    <meta property="og:url" content="%SITE_URL%" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Onitama · The Stone Garden" />
+    <meta name="twitter:description" content="A 3D martial-arts strategy duel in a Japanese stone garden. Play the Garden Master AI or a friend, right in your browser." />
+    <meta name="twitter:image" content="%SITE_URL%og.jpg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600;700&family=Yuji+Syuku&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=block"
       rel="stylesheet"
     />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a1714'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%23e9dcc2' stroke-width='5' stroke-dasharray='95 20'/%3E%3C/svg%3E" />
   </head>
   <body>
     <div id="app"></div>

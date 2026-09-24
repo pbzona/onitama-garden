@@ -70,6 +70,13 @@ tests/        engine.test.ts, aibench.ts (AI level vs level)
 scripts/      inline.mjs, shot.mjs / e2e.mjs (headless screenshots and click-through tests; append ?fast to the URL)
 ```
 
+## Icons & social previews
+
+- `public/favicon.svg` is the icon: a gold torii (the temple arch) over a vermilion sun on a slate tile. `public/site.webmanifest` makes the game installable.
+- The PNG icons and the 1200×630 Open Graph / Twitter image (`og.jpg`) are stored as base64 text in `public-b64/` so the repo stays text-only. `vite.config.ts` decodes them into `dist/` at build time and serves them in dev.
+- Link-preview crawlers need an absolute `og:image` URL. Build with `SITE_URL=https://your.domain npm run build`, or deploy on Vercel, where the production domain is picked up automatically.
+- To regenerate: `node scripts/ogshot.mjs` renders hero shots of the garden into `brand/`, then `node scripts/brand.mjs brand/<shot>.png` rebuilds every icon and the OG image.
+
 ## Graphics settings
 
 **High** uses 2× DPR, a 4096 shadow map, and 4× MSAA. **Light** (the default on touch devices) uses 1.25× DPR, a 2048 shadow map, 2× MSAA, and fewer particles.
