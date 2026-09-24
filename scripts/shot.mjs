@@ -1,0 +1,21 @@
+// Headless (CPU) screenshot harness. Usage: node scripts/shot.mjs name "js" frames width height
+import { chromium } from 'playwright';
+const [name = 'shot', code = '', frames = '3', w = '960', h = '600'] = process.argv.slice(2);
+const Q = process.env.Q || 'low';
+const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--disable-dev-shm-usage'] });
+const page = await browser.newPage({ viewport: { width: +w, height: +h } });
+const logs = [];
+page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') logs.push(`[${m.type()}] ${m.text()}`.slice(0, 400)); });
+page.on('pageerror', (e) => logs.push('[pageerror] ' + e.message));
+page.setDefaultTimeout(400000);
+await page.addInitScript((q) => localStorage.setItem('onitama.quality', q), Q);
+const t0 = Date.now();
+await page.goto('http://localhost:4173/', { waitUntil: 'load' });
+await page.waitForFunction(() => window.__onitama, null, { timeout: 400000, polling: 2000 });
+console.log('booted', Date.now() - t0);
+if (code) await page.evaluate(code);
+const ft = await page.evaluate((n) => new Promise((res) => { const s = performance.now(); let k = 0; const f = () => (++k >= n ? res(performance.now() - s) : requestAnimationFrame(f)); requestAnimationFrame(f); }), +frames);
+console.log('frames', frames, 'ms', Math.round(ft));
+await page.screenshot({ path: `shots/${name}.png`, timeout: 400000 });
+console.log(logs.slice(0, 20).join('\n') || 'no console errors');
+await browser.close();

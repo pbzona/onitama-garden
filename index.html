@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1a1714" />
+    <title>Onitama · The Stone Garden</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600;700&family=Yuji+Syuku&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=block"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a1714'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%23e9dcc2' stroke-width='5' stroke-dasharray='95 20'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <div id="loading">
+      <div class="load-enso"></div>
+      <div class="load-text">raking the garden…</div>
+    </div>
+
+    <!-- In-game HUD -->
+    <div id="hud" class="hidden">
+      <div class="hud-top">
+        <div id="turn" class="turn">
+          <span class="seal"></span>
+          <div>
+            <div class="turn-name"></div>
+            <div class="turn-sub"></div>
+          </div>
+        </div>
+        <div class="hud-buttons">
+          <button id="btn-undo" title="Undo (Z)" aria-label="Undo">
+            <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
+          </button>
+          <button id="btn-rules" title="How to play (H)" aria-label="Rules">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" /><path d="M9.5 9.2a2.6 2.6 0 1 1 3.4 2.5c-.6.2-.9.8-.9 1.4v.6" /><circle cx="12" cy="17" r=".6" /></svg>
+          </button>
+          <button id="btn-sound" title="Sound (M)" aria-label="Sound">
+            <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z" /><path class="wave" d="M16.5 8.5a5 5 0 0 1 0 7" /><path class="wave" d="M19 6a8.5 8.5 0 0 1 0 12" /></svg>
+          </button>
+          <button id="btn-menu" title="Menu (Esc)" aria-label="Menu">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+        </div>
+      </div>
+      <div id="log" class="log"></div>
+      <div id="hint" class="hint"></div>
+      <div id="inspect" class="inspect"><img alt="" /><div class="cap"></div></div>
+    </div>
+
+    <!-- Main menu -->
+    <div id="menu" class="overlay hidden">
+      <div class="panel menu-panel">
+        <div class="title-kanji">鬼玉</div>
+        <h1>Onitama</h1>
+        <div class="subtitle">The Stone Garden</div>
+        <div class="field">
+          <div class="label">Opponent</div>
+          <div class="seg" id="seg-mode">
+            <button data-v="ai" class="on">Garden Master (AI)</button>
+            <button data-v="hotseat">Two players</button>
+          </div>
+        </div>
+        <div class="field" id="field-level">
+          <div class="label">Skill</div>
+          <div class="seg" id="seg-level">
+            <button data-v="easy">Novice</button>
+            <button data-v="normal" class="on">Adept</button>
+            <button data-v="hard">Sensei</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="label">Graphics</div>
+          <div class="seg" id="seg-quality">
+            <button data-v="high">High</button>
+            <button data-v="low">Light</button>
+          </div>
+        </div>
+        <button id="btn-start" class="primary">Enter the garden</button>
+        <button id="btn-resume" class="ghost hidden">Resume game</button>
+        <button id="btn-howto" class="link">How to play</button>
+      </div>
+    </div>
+
+    <!-- Rules -->
+    <div id="rules" class="overlay hidden">
+      <div class="panel rules-panel">
+        <button class="close" data-close="rules" aria-label="Close">×</button>
+        <h2>The Way of Onitama</h2>
+        <p class="lede">Two masters, eight students, five cards. Each card is a martial form, and every form you use passes to your opponent.</p>
+        <ol>
+          <li><b>Your turn.</b> Choose one of your two cards, then move one of your stones exactly as the card shows. The dark square is the stone; red squares are where it may go. Cards show moves from your own seat.</li>
+          <li><b>Capture</b> by landing on an opponent's stone. You may never land on your own.</li>
+          <li><b>Pass the form on.</b> The card you used slides to your opponent's side, and you take the waiting side card. You'll get it back only after your opponent uses it.</li>
+          <li><b>No legal move?</b> You must still give up one card and take the side card.</li>
+        </ol>
+        <h3>Two ways to win</h3>
+        <div class="ways">
+          <div><span class="way-k">石</span><b>Way of the Stone</b>Capture the opposing Master.</div>
+          <div><span class="way-k">流</span><b>Way of the Stream</b>Move your Master onto your opponent's temple square, marked with the gold torii.</div>
+        </div>
+        <p class="small">The seal on the dealt side card decides who opens: indigo 石 for Granite, vermilion 岩 for Basalt. Controls: click a card, then a stone, then a glowing square. Drag to look around; scroll to zoom. Keys: Z undo, H rules, M sound, Esc menu.</p>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="result" class="overlay hidden">
+      <div class="panel result-panel">
+        <div class="result-kanji"></div>
+        <div class="result-title"></div>
+        <div class="result-sub"></div>
+        <div class="result-actions">
+          <button id="btn-rematch" class="primary">Play again</button>
+          <button id="btn-result-menu" class="ghost">Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
