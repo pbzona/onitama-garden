@@ -58,6 +58,12 @@ export class Stage {
     r.toneMappingExposure = 1.0;
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFShadowMap;
+    // Shadows are expensive at 4096², and almost every caster in the garden is
+    // static. Let the app invalidate the map only while pieces/cards move, plus
+    // occasional refreshes for the falling leaves. This preserves the exact map
+    // resolution and filtering without rebuilding it on every display refresh.
+    r.shadowMap.autoUpdate = false;
+    r.shadowMap.needsUpdate = true;
     container.appendChild(r.domElement);
     this.renderer = r;
 
@@ -149,6 +155,7 @@ export class Stage {
     this.sun.shadow.mapSize.set(sm, sm);
     this.sun.shadow.map?.dispose();
     (this.sun.shadow as any).map = null;
+    this.renderer.shadowMap.needsUpdate = true;
     for (const rt of [this.composer.renderTarget1, this.composer.renderTarget2]) {
       rt.samples = q === 'high' ? 4 : 2;
       rt.dispose();
@@ -183,9 +190,10 @@ export class Stage {
     this.camera.updateProjectionMatrix();
   }
 
-  render(t: number) {
+  render(t: number, refreshShadows = false) {
     this.grade.uniforms.uTime.value = t % 100;
     this.sky.material.uniforms.time.value = t;
+    if (refreshShadows) this.renderer.shadowMap.needsUpdate = true;
     this.composer.render();
   }
 }

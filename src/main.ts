@@ -8,7 +8,7 @@ import { BoardView, SLAB } from './render/board.ts';
 import { PiecesView } from './render/pieces.ts';
 import { CardsView } from './render/cards3d.ts';
 import { Dust, Fireflies, FallingLeaves } from './render/effects.ts';
-import { tickTweens } from './render/tween.ts';
+import { busy as tweensBusy, tickTweens } from './render/tween.ts';
 import { Vfx } from './render/vfx.ts';
 import { Controller, type Mode } from './game/controller.ts';
 import { Hud, initSeg, overlay, segValue } from './ui/hud.ts';
@@ -20,6 +20,13 @@ import { squarePos } from './render/board.ts';
 // ?fast = large fixed time steps (for automated testing on software renderers)
 const params = new URLSearchParams(location.search);
 let FIXED_DT = params.has('dt') ? +params.get('dt')! : params.has('fast') ? 0.3 : 0;
+// The full-resolution HDR/bloom pipeline is intentionally high quality, but it
+// needn't run at interaction speed while the board is idle. Keep 60 fps for
+// input and authored animation, then settle to 30 fps for ambient motion. A
+// ?fps=N override remains available for profiling and forces a fixed cadence.
+const FPS_OVERRIDE = Number(params.get('fps')) || 0;
+const ACTIVE_FPS = Math.min(120, Math.max(15, FPS_OVERRIDE || 60));
+const IDLE_FPS = Math.min(ACTIVE_FPS, FPS_OVERRIDE || 30);
 
 async function boot() {
   // Card faces are painted onto canvases, so the brush/serif fonts must be ready first.
@@ -149,12 +156,34 @@ async function boot() {
   const timer = new THREE.Timer();
   timer.connect(document);
   let t = 0;
+  let lastFrameAt = -Infinity;
+  let nextAmbientShadowAt = 0;
+  let activeUntil = 0;
+  const keepActive = (ms = 900) => (activeUntil = performance.now() + ms);
+  // Hover/lift feedback and orbit controls should react at 60 fps. Once input
+  // stops, the garden returns to the lower-cost ambient cadence automatically.
+  for (const event of ['pointerdown', 'pointermove', 'wheel', 'keydown'] as const)
+    window.addEventListener(event, () => keepActive(), { passive: true });
+  stage.controls.addEventListener('start', () => keepActive(1500));
+  stage.controls.addEventListener('change', () => keepActive(500));
   // compile shaders before revealing
   stage.renderer.compile(stage.scene, stage.camera);
-  const loop = () => {
+  const loop = (now: number) => {
+    requestAnimationFrame(loop);
+    // requestAnimationFrame can follow 120/144 Hz displays. Skip redundant
+    // callbacks before doing any simulation, uploads, or post-processing work.
+    // A hidden tab has no visible output, so avoid waking the GPU altogether.
+    const animationActive = tweensBusy();
+    const frameMs = 1000 / (animationActive || now < activeUntil ? ACTIVE_FPS : IDLE_FPS);
+    if (document.hidden || now - lastFrameAt < frameMs - 0.5) return;
+    const elapsed = now - lastFrameAt;
+    lastFrameAt = Number.isFinite(lastFrameAt) ? now - (elapsed % frameMs) : now;
     timer.update();
     const dt = FIXED_DT || Math.min(timer.getDelta(), 0.05);
     t += dt;
+    // Read this before ticking so the final animated transform is guaranteed to
+    // make it into the cached shadow map.
+    const shadowsMoving = animationActive;
     tickTweens(dt);
     stage.controls.update();
     board.update(dt, t);
@@ -167,13 +196,17 @@ async function boot() {
     ctl.update(dt, t);
     vfx.update(dt, t);
     vfx.preRender();
-    stage.render(t);
+    // The scene's only perpetual moving shadow casters are tiny falling leaves.
+    // Refresh them at 12 Hz; piece/card/camera-effect tweens still refresh every
+    // rendered frame. Shadow resolution and visual filtering remain unchanged.
+    const refreshAmbientShadows = t >= nextAmbientShadowAt;
+    if (refreshAmbientShadows) nextAmbientShadowAt = t + 1 / 12;
+    stage.render(t, shadowsMoving || refreshAmbientShadows);
     vfx.postRender();
-    requestAnimationFrame(loop);
   };
   // expose for debugging / automated checks
   (window as any).__onitama = { ctl, stage, cards, legalMoves, squarePos, vfx, setDt: (d: number) => (FIXED_DT = d) };
-  loop();
+  requestAnimationFrame(loop);
 
   requestAnimationFrame(() => {
     document.getElementById('loading')!.classList.add('fade');
