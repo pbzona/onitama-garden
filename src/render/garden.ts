@@ -81,7 +81,7 @@ export function buildGarden(): GardenRefs {
   }
 
   // stepping stones (tobi-ishi) in the near-left corner
-  const stepMat = stoneMaterial({ base: 0x8a8378, dark: 0x6e685e, speck1: 0xa39c8f, speck2: 0x4a4640, scale: 1.4, speckScale: 22, speckAmount: 0.4, roughness: 0.85, bump: 0.03 });
+  const stepMat = stoneMaterial({ octaves: 2, base: 0x8a8378, dark: 0x6e685e, speck1: 0xa39c8f, speck2: 0x4a4640, scale: 1.4, speckScale: 22, speckAmount: 0.4, roughness: 0.85, bump: 0.03 });
   const path: [number, number][] = [
     [-5.2, 6.4], [-6.1, 5.3], [-6.6, 4.0], [-7.5, 3.0], [-8.6, 2.3],
   ];
@@ -99,7 +99,7 @@ export function buildGarden(): GardenRefs {
 
   // ---------------------------------------------------------------- stone lantern (kasuga-dōrō)
   const lantern = new THREE.Group();
-  const lMat = stoneMaterial({ base: 0x8d887c, dark: 0x5f6a55, speck1: 0x6f7d58, speck2: 0x3e3b36, scale: 2.2, speckScale: 20, speckAmount: 0.5, roughness: 0.92, bump: 0.05 });
+  const lMat = stoneMaterial({ octaves: 2, base: 0x8d887c, dark: 0x5f6a55, speck1: 0x6f7d58, speck2: 0x3e3b36, scale: 2.2, speckScale: 20, speckAmount: 0.5, roughness: 0.92, bump: 0.05 });
   const lathe = (pts: [number, number][], seg = 6) =>
     new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg);
   const parts: THREE.BufferGeometry[] = [
@@ -262,7 +262,7 @@ function buildMaple() {
   };
   grow(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.25, 1, 0.15).normalize(), 1.7, 0.17, 5);
 
-  const barkMat = stoneMaterial({ base: 0x4a3b30, dark: 0x2e241e, speck1: 0x6b5a4a, speck2: 0x1d1612, scale: 4, speckScale: 30, speckAmount: 0.4, roughness: 0.95, bump: 0.05, strata: 0.2 });
+  const barkMat = stoneMaterial({ octaves: 2, base: 0x4a3b30, dark: 0x2e241e, speck1: 0x6b5a4a, speck2: 0x1d1612, scale: 4, speckScale: 30, speckAmount: 0.4, roughness: 0.95, bump: 0.05, strata: 0.2 });
   const bark = new THREE.Mesh(mergeGeometries(barkGeos), barkMat);
   bark.castShadow = bark.receiveShadow = true;
   group.add(bark);
@@ -336,11 +336,11 @@ function buildNiwaki(seed: number, scale: number) {
   const curve = new THREE.CatmullRomCurve3(trunkPts);
   const trunk = new THREE.TubeGeometry(curve, 24, 0.16, 8, false);
   trunk.deleteAttribute('uv');
-  const barkMat = stoneMaterial({ base: 0x4d4038, dark: 0x2b231f, speck1: 0x6b5a4d, speck2: 0x1a1512, scale: 5, speckScale: 25, speckAmount: 0.5, roughness: 0.95, bump: 0.06, strata: 0.25 });
+  const barkMat = stoneMaterial({ octaves: 2, base: 0x4d4038, dark: 0x2b231f, speck1: 0x6b5a4d, speck2: 0x1a1512, scale: 5, speckScale: 25, speckAmount: 0.5, roughness: 0.95, bump: 0.06, strata: 0.25 });
   const tm = new THREE.Mesh(trunk, barkMat);
   tm.castShadow = true;
   g.add(tm);
-  const needle = stoneMaterial({ base: 0x2f4a2a, dark: 0x1c2f1b, speck1: 0x4c6b3a, speck2: 0x13200f, scale: 3, speckScale: 50, speckAmount: 0.8, roughness: 1, bump: 0.12, sheen: 0x6f8f4a });
+  const needle = stoneMaterial({ octaves: 2, base: 0x2f4a2a, dark: 0x1c2f1b, speck1: 0x4c6b3a, speck2: 0x13200f, scale: 3, speckScale: 50, speckAmount: 0.8, roughness: 1, bump: 0.12, sheen: 0x6f8f4a });
   const pads: [number, number, number, number][] = [
     [0.05, 4.1, 0, 0.8],
     [0.9, 3.0, 0.3, 0.75],
@@ -373,9 +373,9 @@ const WALL_HALF = 14;
 function buildWalls() {
   const g = new THREE.Group();
   const L = WALL_HALF * 2 + 0.6;
-  const plaster = stoneMaterial({ base: 0xe0c89c, dark: 0xbfa276, speck1: 0xd9c9a6, speck2: 0x8f7a58, scale: 0.35, speckScale: 6, speckAmount: 0.15, roughness: 0.95, bump: 0.02, strata: 3 });
+  const plaster = stoneMaterial({ octaves: 2, base: 0xe0c89c, dark: 0xbfa276, speck1: 0xd9c9a6, speck2: 0x8f7a58, scale: 0.35, speckScale: 6, speckAmount: 0.15, roughness: 0.95, bump: 0.02, strata: 3 });
   const lineMat = new THREE.MeshStandardMaterial({ color: 0xe9dfc9, roughness: 0.9 });
-  const baseMat = stoneMaterial({ base: 0x6f6a60, dark: 0x4f4b44, speck1: 0x8a8578, speck2: 0x33302b, scale: 1.2, speckScale: 16, speckAmount: 0.5, roughness: 0.9, bump: 0.05 });
+  const baseMat = stoneMaterial({ octaves: 2, base: 0x6f6a60, dark: 0x4f4b44, speck1: 0x8a8578, speck2: 0x33302b, scale: 1.2, speckScale: 16, speckAmount: 0.5, roughness: 0.9, bump: 0.05 });
   const tileMat = new THREE.MeshStandardMaterial({ color: 0x3c4046, roughness: 0.55, metalness: 0.15 });
   const moss = mossMat();
   const segment = (seed: number) => {

@@ -8,7 +8,7 @@ import { BoardView, SLAB } from './render/board.ts';
 import { PiecesView } from './render/pieces.ts';
 import { CardsView } from './render/cards3d.ts';
 import { Dust, Fireflies, FallingLeaves } from './render/effects.ts';
-import { tickTweens } from './render/tween.ts';
+import { busy, tickTweens } from './render/tween.ts';
 import { Vfx } from './render/vfx.ts';
 import { Controller, type Mode } from './game/controller.ts';
 import { Hud, initSeg, overlay, segValue } from './ui/hud.ts';
@@ -40,7 +40,7 @@ async function boot() {
   const board = new BoardView();
   const pieces = new PiecesView();
   const cards = new CardsView();
-  const sand = createSand(SLAB / 2, [...garden.features, ...cards.plinthFeatures]);
+  const sand = createSand(stage.renderer, SLAB / 2, [...garden.features, ...cards.plinthFeatures], quality === 'high' ? 2048 : 1024);
   const dust = new Dust();
   const leaves = new FallingLeaves(garden.canopyCenters.filter((_, i) => i % 3 === 0), quality === 'high' ? 90 : 45);
   const flies = new Fireflies(quality === 'high' ? 40 : 20);
@@ -150,13 +150,32 @@ async function boot() {
   timer.connect(document);
   let t = 0;
   // compile shaders before revealing
-  stage.renderer.compile(stage.scene, stage.camera);
-  const loop = () => {
+  vfx.prewarm(stage.renderer, stage.scene, stage.camera);
+  // ---- frame pacing: render only as often as needed.
+  // 60 fps while something moves or the player is interacting, 30 fps when idle (ambient leaves and
+  // fireflies), 15 fps when the window isn't focused; the browser pauses rAF entirely in hidden tabs.
+  let lastActiveAt = performance.now();
+  const markActive = () => (lastActiveAt = performance.now());
+  for (const ev of ['pointermove', 'pointerdown', 'wheel', 'touchmove'] as const) app.addEventListener(ev, markActive, { passive: true });
+  window.addEventListener('keydown', markActive);
+  stage.controls.addEventListener('change', markActive);
+  let lastRender = 0;
+  // Adaptive resolution: if we can't hold 60 fps while active, render fewer pixels.
+  let emaInterval = 16.7, slowFrames = 0, fastFrames = 0;
+  const loop = (now: number) => {
+    requestAnimationFrame(loop);
+    if ((window as any).__benchPause) return;
+    const moving = busy() || vfx.isActive() || ctl.isAnimating();
+    const active = moving || now - lastActiveAt < 1500;
+    const target = !document.hasFocus() ? 15 : active ? 60 : 30;
+    if (!FIXED_DT && now - lastRender < 1000 / target - 2) return;
+    const interval = now - lastRender;
+    lastRender = now;
     timer.update();
-    const dt = FIXED_DT || Math.min(timer.getDelta(), 0.05);
+    const dt = FIXED_DT || Math.min(timer.getDelta(), 0.1);
     t += dt;
     tickTweens(dt);
-    stage.controls.update();
+    stage.controls.update(dt);
     board.update(dt, t);
     pieces.update(dt, t);
     cards.update(dt, t);
@@ -166,14 +185,32 @@ async function boot() {
     flies.setPixelScale(stage.renderer.getPixelRatio() * (app.clientHeight / 900));
     ctl.update(dt, t);
     vfx.update(dt, t);
+    // shadows are static unless stones/cards are moving (or a card is lifting under the cursor)
+    if (moving || now - lastActiveAt < 500) stage.invalidateShadows();
     vfx.preRender();
     stage.render(t);
     vfx.postRender();
-    requestAnimationFrame(loop);
+    if (!FIXED_DT && target === 60 && interval < 250) {
+      emaInterval += (interval - emaInterval) * 0.1;
+      if (emaInterval > 21) {
+        fastFrames = 0;
+        if (++slowFrames > 45) {
+          stage.setRenderScale(stage.renderScale - 0.1);
+          slowFrames = 0;
+          emaInterval = 16.7;
+        }
+      } else if (emaInterval < 17.6 && stage.renderScale < 1) {
+        slowFrames = 0;
+        if (++fastFrames > 300) {
+          stage.setRenderScale(stage.renderScale + 0.05);
+          fastFrames = 0;
+        }
+      }
+    }
   };
   // expose for debugging / automated checks
   (window as any).__onitama = { ctl, stage, cards, legalMoves, squarePos, vfx, setDt: (d: number) => (FIXED_DT = d) };
-  loop();
+  requestAnimationFrame(loop);
 
   requestAnimationFrame(() => {
     document.getElementById('loading')!.classList.add('fade');

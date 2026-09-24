@@ -29,21 +29,22 @@ export interface StoneOpts {
   engraveSize?: number;
   topY?: number;
   offset?: THREE.Vector3; // shifts the noise so shared geometry looks unique
+  octaves?: number; // fbm octaves: 4 for hero objects, 2 for scenery (big screen area)
 }
 
 /**
  * Procedural stone: object-space fbm mottling + speckles + bump, no UVs needed.
  * Works on lathe/icosahedron/box geometry alike and sticks to moving pieces.
  */
-export function stoneMaterial(o: StoneOpts): THREE.MeshPhysicalMaterial {
-  const mat = new THREE.MeshPhysicalMaterial({
-    color: o.base,
-    roughness: o.roughness ?? 0.7,
-    metalness: 0,
-    clearcoat: o.clearcoat ?? 0,
-    clearcoatRoughness: 0.35,
-  });
-  if (o.sheen) {
+export function stoneMaterial(o: StoneOpts): THREE.MeshStandardMaterial {
+  // Physical (clearcoat/sheen) only where it's actually used; Standard is noticeably cheaper per pixel.
+  const physical = !!o.clearcoat || !!o.sheen;
+  const mat: THREE.MeshStandardMaterial = physical
+    ? new THREE.MeshPhysicalMaterial({ color: o.base, roughness: o.roughness ?? 0.7, metalness: 0, clearcoat: o.clearcoat ?? 0, clearcoatRoughness: 0.35 })
+    : new THREE.MeshStandardMaterial({ color: o.base, roughness: o.roughness ?? 0.7, metalness: 0 });
+  const oct = o.octaves ?? 4;
+  mat.defines = { ...(mat.defines ?? {}), FBM_OCT: oct };
+  if (o.sheen && mat instanceof THREE.MeshPhysicalMaterial) {
     mat.sheen = 1;
     mat.sheenColor = new THREE.Color(o.sheen);
     mat.sheenRoughness = 0.6;
@@ -125,7 +126,7 @@ roughnessFactor = mix(roughnessFactor, 0.28, goldMask);`,
 normal = bumpNormal(-vViewPosition, normal, stoneH, uBump);`,
       );
   };
-  mat.customProgramCacheKey = () => 'stone' + (useEngrave ? 'E' : '') + (o.sheen ? 'S' : '');
+  mat.customProgramCacheKey = () => 'stone' + (useEngrave ? 'E' : '') + (o.sheen ? 'S' : '') + (physical ? 'P' : '') + oct;
   return mat;
 }
 
@@ -150,8 +151,8 @@ export function basaltMat() {
   return stoneMaterial({ ...PALETTE.basalt, offset: rOff(), scale: 3, speckScale: 60, speckAmount: 0.7, roughness: 0.38, bump: 0.01, clearcoat: 0.6 });
 }
 export function boulderMat() {
-  return stoneMaterial({ ...PALETTE.boulder, scale: 0.9, speckScale: 18, speckAmount: 0.5, roughness: 0.9, bump: 0.06, strata: 2.2 });
+  return stoneMaterial({ ...PALETTE.boulder, octaves: 2, scale: 0.9, speckScale: 18, speckAmount: 0.5, roughness: 0.9, bump: 0.06, strata: 2.2 });
 }
 export function mossMat() {
-  return stoneMaterial({ ...PALETTE.moss, scale: 3.5, speckScale: 70, speckAmount: 0.8, roughness: 1, bump: 0.14, sheen: 0x8aa04c });
+  return stoneMaterial({ ...PALETTE.moss, octaves: 2, scale: 3.5, speckScale: 70, speckAmount: 0.8, roughness: 1, bump: 0.14, sheen: 0x8aa04c });
 }

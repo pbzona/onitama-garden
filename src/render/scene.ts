@@ -47,17 +47,24 @@ export class Stage {
   quality: Quality;
   private pmrem: THREE.PMREMGenerator;
   private maxDpr: number;
+  /** 0.5–1, lowered automatically when the GPU can't keep up (see FramePacer in main.ts). */
+  renderScale = 1;
+  private container!: HTMLElement;
 
   constructor(container: HTMLElement, quality: Quality) {
     this.quality = quality;
-    this.maxDpr = quality === 'high' ? 2 : 1.25;
+    this.maxDpr = quality === 'high' ? 1.5 : 1;
+    this.container = container;
     const r = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
-    r.setPixelRatio(Math.min(window.devicePixelRatio, this.maxDpr));
+    r.setPixelRatio(this.pixelRatio());
     r.setSize(container.clientWidth, container.clientHeight);
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.0;
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFShadowMap;
+    // The scene is almost entirely static: only re-render the shadow map when something moves.
+    r.shadowMap.autoUpdate = false;
+    r.shadowMap.needsUpdate = true;
     container.appendChild(r.domElement);
     this.renderer = r;
 
@@ -89,7 +96,7 @@ export class Stage {
     su.cloudScale.value = 0.00035;
     const sunDir = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(86), THREE.MathUtils.degToRad(-128));
     su.sunPosition.value.copy(sunDir);
-    this.scene.add(this.sky);
+    this.bakeSkyBackground(r);
 
     this.pmrem = new THREE.PMREMGenerator(r);
     this.refreshEnvironment();
@@ -104,7 +111,7 @@ export class Stage {
     this.sun.position.set(-11, 7.5, -9);
     this.sun.target.position.set(0, 0, 0);
     this.sun.castShadow = true;
-    const sm = quality === 'high' ? 4096 : 2048;
+    const sm = quality === 'high' ? 2048 : 1024;
     this.sun.shadow.mapSize.set(sm, sm);
     const sc = this.sun.shadow.camera;
     sc.left = -16;
@@ -144,8 +151,8 @@ export class Stage {
   setQuality(q: Quality, container: HTMLElement) {
     if (q === this.quality) return;
     this.quality = q;
-    this.maxDpr = q === 'high' ? 2 : 1.25;
-    const sm = q === 'high' ? 4096 : 2048;
+    this.maxDpr = q === 'high' ? 1.5 : 1;
+    const sm = q === 'high' ? 2048 : 1024;
     this.sun.shadow.mapSize.set(sm, sm);
     this.sun.shadow.map?.dispose();
     (this.sun.shadow as any).map = null;
@@ -153,7 +160,34 @@ export class Stage {
       rt.samples = q === 'high' ? 4 : 2;
       rt.dispose();
     }
+    this.renderer.shadowMap.needsUpdate = true;
     this.resize(container);
+  }
+
+  /** The dusk sky is static, so render it once into a cube map instead of shading it every frame. */
+  private bakeSkyBackground(r: THREE.WebGLRenderer) {
+    const skyScene = new THREE.Scene();
+    skyScene.add(this.sky);
+    const crt = new THREE.WebGLCubeRenderTarget(512, { type: THREE.HalfFloatType });
+    const cubeCam = new THREE.CubeCamera(1, 1000, crt);
+    cubeCam.update(r, skyScene);
+    skyScene.remove(this.sky);
+    this.scene.background = crt.texture;
+  }
+
+  invalidateShadows() {
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+
+  private pixelRatio() {
+    return Math.max(0.5, Math.min(window.devicePixelRatio, this.maxDpr) * this.renderScale);
+  }
+
+  setRenderScale(s: number) {
+    s = Math.max(0.5, Math.min(1, s));
+    if (Math.abs(s - this.renderScale) < 0.01) return;
+    this.renderScale = s;
+    this.resize(this.container);
   }
 
   refreshEnvironment() {
@@ -172,9 +206,9 @@ export class Stage {
 
   resize(container: HTMLElement) {
     const w = container.clientWidth, h = container.clientHeight;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.maxDpr));
+    this.renderer.setPixelRatio(this.pixelRatio());
     this.renderer.setSize(w, h);
-    this.composer.setPixelRatio(Math.min(window.devicePixelRatio, this.maxDpr));
+    this.composer.setPixelRatio(this.pixelRatio());
     this.composer.setSize(w, h);
     this.camera.aspect = w / h;
     // Fit the board + card rows: widen the effective view on portrait screens.
@@ -185,7 +219,6 @@ export class Stage {
 
   render(t: number) {
     this.grade.uniforms.uTime.value = t % 100;
-    this.sky.material.uniforms.time.value = t;
     this.composer.render();
   }
 }
