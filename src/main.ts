@@ -145,7 +145,6 @@ async function boot() {
   for (const event of ['pointerdown', 'pointermove', 'wheel', 'keydown'] as const)
     window.addEventListener(event, () => keepActive(), { passive: true });
   stage.controls.addEventListener('start', () => keepActive(1500));
-  stage.controls.addEventListener('change', () => keepActive(500));
   // compile shaders before revealing
   stage.renderer.compile(stage.scene, stage.camera);
   const loop = (now: number) => {
@@ -156,8 +155,7 @@ async function boot() {
     const animationActive = tweensBusy();
     const frameMs = 1000 / (animationActive || now < activeUntil ? ACTIVE_FPS : IDLE_FPS);
     if (document.hidden || now - lastFrameAt < frameMs - 0.5) return;
-    const elapsed = now - lastFrameAt;
-    lastFrameAt = Number.isFinite(lastFrameAt) ? now - (elapsed % frameMs) : now;
+    lastFrameAt = now;
     timer.update();
     const dt = FIXED_DT || Math.min(timer.getDelta(), 0.05);
     t += dt;
