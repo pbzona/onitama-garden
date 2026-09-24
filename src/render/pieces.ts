@@ -37,6 +37,7 @@ function masterGeometry() {
 }
 
 export interface PieceObj {
+  fade?: number; // 1 = solid, lower = see-through
   mesh: THREE.Group;
   code: number;
   player: Player;
@@ -127,6 +128,12 @@ export class PiecesView {
     return this.pieces.map((p) => p.body);
   }
 
+  private faded = new Set<PieceObj>();
+  /** Stones standing between the camera and a highlighted square turn see-through. */
+  setFaded(ps: Set<PieceObj>) {
+    this.faded = ps;
+  }
+
   select(p: PieceObj | null) {
     this.selected = p;
   }
@@ -145,6 +152,19 @@ export class PiecesView {
   }
 
   update(dt: number, t: number) {
+    for (const p of this.pieces) {
+      const target = this.faded.has(p) ? 0.28 : 1;
+      const cur = p.fade ?? 1;
+      if (Math.abs(target - cur) < 0.002 && cur === target) continue;
+      const next = Math.abs(target - cur) < 0.01 ? target : cur + (target - cur) * Math.min(1, dt * 12);
+      p.fade = next;
+      const m = p.body.material as THREE.MeshPhysicalMaterial;
+      m.transparent = next < 1;
+      m.opacity = next;
+      m.depthWrite = next >= 1;
+      // cords/bands are shared materials; hide them while see-through
+      p.mesh.children.forEach((c) => c !== p.body && (c.visible = next > 0.6));
+    }
     const ring = this.selRing.material as THREE.MeshBasicMaterial;
     if (this.selected) {
       ring.opacity += (0.9 - ring.opacity) * Math.min(1, dt * 10);

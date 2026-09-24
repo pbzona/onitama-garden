@@ -64,6 +64,7 @@ export class BoardView {
         transparent: true,
         opacity: 0,
         depthWrite: false,
+        depthTest: false, // stay visible when a tall stone stands in front of the square
         blending: THREE.AdditiveBlending,
         color: 0xffd08a,
         toneMapped: false,
@@ -71,7 +72,7 @@ export class BoardView {
       const mk = new THREE.Mesh(mGeo, mat);
       mk.position.copy(p).y += 0.004;
       mk.rotation.y = Math.random() * Math.PI * 2;
-      mk.renderOrder = 2;
+      mk.renderOrder = 10;
       this.group.add(mk);
       this.markers.push(mk);
       this.markerMat.push(mat);

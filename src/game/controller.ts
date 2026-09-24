@@ -116,6 +116,7 @@ export class Controller {
     this.hud.setTurn(this.state.turn, 'Setting the stones…');
     this.hud.hint('');
     await this.turnCamera(this.isHuman(this.state.turn) || mode === 'ai' ? (mode === 'ai' ? 0 : this.state.turn) : 0, 1.4);
+    this.refreshOpponentPanel();
     await this.dealIn();
     if (g !== this.gen) return;
     const first = this.state.turn;
@@ -171,6 +172,7 @@ export class Controller {
   private beginTurn() {
     const s = this.state;
     this.refreshUsable();
+    this.refreshOpponentPanel();
     this.hud.undoBtn.disabled = this.history.length === 0;
     if (s.winner !== -1) return;
     const pl = s.turn;
@@ -211,6 +213,7 @@ export class Controller {
     this.pieces.select(null);
     this.pieces.showGhost(null, -1);
     this.board.setMarkers(new Map());
+    this.pieces.setFaded(new Set());
     this.refreshUsable();
   }
 
@@ -235,6 +238,7 @@ export class Controller {
       }
     }
     this.board.setMarkers(map);
+    this.pieces.setFaded(this.selSq >= 0 ? this.occluders(map.keys()) : new Set());
     // ghost preview on hovered destination
     const sel = this.selSq >= 0 ? this.pieces.at(this.selSq) ?? null : null;
     this.pieces.showGhost(sel, sel && map.has(this.hoverSq) ? this.hoverSq : -1);
@@ -252,6 +256,17 @@ export class Controller {
     const rect = this.stage.renderer.domElement.getBoundingClientRect();
     this.ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(this.ndc, this.stage.camera);
+    // A highlighted destination wins even if a tall stone stands in front of it on screen.
+    if (this.selSq >= 0) {
+      const plane = this.raycaster.intersectObjects(this.board.pickPlanes, false)[0];
+      if (plane) {
+        const sq = plane.object.userData.square as number;
+        if (this.movesFrom(this.selSq, this.selCard).some((m) => m.to === sq)) {
+          const cardHit = this.raycaster.intersectObjects(this.cards.faces(), false)[0];
+          if (!cardHit || cardHit.distance > plane.distance) return { kind: 'square', sq };
+        }
+      }
+    }
     const objs: THREE.Object3D[] = [...this.cards.faces(), ...this.pieces.pickables(), ...this.board.pickPlanes];
     const hit = this.raycaster.intersectObjects(objs, false)[0];
     if (!hit) return null;
@@ -263,6 +278,26 @@ export class Controller {
     }
     if (o.userData.square !== undefined) return { kind: 'square', sq: o.userData.square };
     return null;
+  }
+
+  /** Stones that sit between the camera and any of the given squares. */
+  private occluders(squares: Iterable<number>) {
+    const out = new Set<PieceObj>();
+    const cam = this.stage.camera.position;
+    const rc = new THREE.Raycaster();
+    const bodies = this.pieces.pickables();
+    for (const sq of squares) {
+      const target = squarePos(sq).add(new THREE.Vector3(0, 0.05, 0));
+      const dir = target.clone().sub(cam);
+      const dist = dir.length();
+      rc.set(cam, dir.normalize());
+      rc.far = dist - 0.3;
+      for (const h of rc.intersectObjects(bodies, false)) {
+        const p = this.pieces.pieces.find((q) => q.mesh === h.object.userData.pieceRef);
+        if (p && p.square !== sq) out.add(p);
+      }
+    }
+    return out;
   }
 
   private setHover(h: Hit) {
@@ -282,6 +317,29 @@ export class Controller {
   }
 
   private inspectUrls = new Map<number, string>();
+  private cardUrl(card: number) {
+    let url = this.inspectUrls.get(card);
+    if (!url) {
+      url = (cardTexture(card).image as HTMLCanvasElement).toDataURL('image/jpeg', 0.85);
+      this.inspectUrls.set(card, url);
+    }
+    return url;
+  }
+
+  /** Refresh the always-visible panel of the opponent's cards. */
+  private refreshOpponentPanel() {
+    const s = this.state;
+    const viewer: Player = this.mode === 'ai' ? 0 : s.turn;
+    const opp = (1 - viewer) as Player;
+    const hand = s.hands[opp];
+    this.hud.setOpponent(
+      opp,
+      [hand[0], hand[1]],
+      [CARDS[hand[0]].name, CARDS[hand[1]].name],
+      [this.cardUrl(hand[0]), this.cardUrl(hand[1])],
+      { url: this.cardUrl(s.side), name: CARDS[s.side].name, toViewer: s.turn === viewer },
+    );
+  }
   /** Enlarged view of a hovered card, oriented as it applies from the viewer's seat. */
   private inspect(card: number | null) {
     const box = document.getElementById('inspect')!;
@@ -289,11 +347,7 @@ export class Controller {
       box.classList.remove('on');
       return;
     }
-    let url = this.inspectUrls.get(card);
-    if (!url) {
-      url = (cardTexture(card).image as HTMLCanvasElement).toDataURL('image/jpeg', 0.85);
-      this.inspectUrls.set(card, url);
-    }
+    const url = this.cardUrl(card);
     const s = this.state;
     const viewer: Player = this.mode === 'ai' ? 0 : s.turn;
     const holder: Player | -1 = s.hands[0].includes(card) ? 0 : s.hands[1].includes(card) ? 1 : -1;

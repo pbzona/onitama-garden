@@ -47,6 +47,7 @@ async function boot() {
   const hud = new Hud();
   const sound = new Sound();
   hud.setMuted(sound.muted);
+  hud.initOpponentToggle(store.get('onitama.oppCollapsed') === '1', (c) => store.set('onitama.oppCollapsed', c ? '1' : '0'));
   const ctl = new Controller(stage, board, pieces, cards, dust, leaves, garden, sound, hud);
 
   // ---- menu wiring

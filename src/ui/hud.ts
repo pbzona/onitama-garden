@@ -46,6 +46,44 @@ export class Hud {
     for (const e of entries.slice(-8)) this.log(e.pl, e.text);
   }
 
+  /**
+   * Opponent's two cards (+ the side card), oriented as they move from the viewer's seat.
+   * Card faces are drawn from their owner's seat, so the opponent's are rotated 180°.
+   */
+  setOpponent(opp: Player, cards: [number, number], names: [string, string], urls: [string, string], side: { url: string; name: string; toViewer: boolean }) {
+    const box = document.getElementById('opp')!;
+    box.classList.remove('p0', 'p1');
+    box.classList.add(opp === 0 ? 'p0' : 'p1');
+    (box.querySelector('.opp-title') as HTMLElement).textContent = `${NAMES[opp]}'s cards`;
+    const figs = box.querySelectorAll('.opp-cards figure');
+    figs.forEach((f, i) => {
+      const img = f.querySelector('img') as HTMLImageElement;
+      if (img.src !== urls[i]) img.src = urls[i];
+      img.alt = names[i];
+      (f.querySelector('figcaption') as HTMLElement).textContent = names[i];
+    });
+    const sImg = box.querySelector('.opp-side img') as HTMLImageElement;
+    if (sImg.src !== side.url) sImg.src = side.url;
+    sImg.classList.toggle('upright', side.toViewer);
+    (box.querySelector('.opp-side span') as HTMLElement).innerHTML = `Side card <b>${side.name}</b><br>${side.toViewer ? 'you take it next' : `${NAMES[opp]} takes it next`}`;
+    void cards;
+  }
+
+  initOpponentToggle(collapsed: boolean, onChange: (c: boolean) => void) {
+    const box = document.getElementById('opp')!;
+    const btn = document.getElementById('opp-toggle')!;
+    const apply = (c: boolean) => {
+      box.classList.toggle('collapsed', c);
+      btn.setAttribute('aria-expanded', String(!c));
+    };
+    apply(collapsed);
+    btn.addEventListener('click', () => {
+      const c = !box.classList.contains('collapsed');
+      apply(c);
+      onChange(c);
+    });
+  }
+
   setMuted(m: boolean) {
     this.soundBtn.classList.toggle('muted', m);
   }
