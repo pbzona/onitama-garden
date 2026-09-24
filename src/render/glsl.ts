@@ -13,9 +13,12 @@ float gnoise(vec3 p){
              mix(mix(dot(_hash3(i+vec3(0,0,1)),f-vec3(0,0,1)), dot(_hash3(i+vec3(1,0,1)),f-vec3(1,0,1)),u.x),
                  mix(dot(_hash3(i+vec3(0,1,1)),f-vec3(0,1,1)), dot(_hash3(i+vec3(1,1,1)),f-vec3(1,1,1)),u.x),u.y),u.z);
 }
+#ifndef FBM_OCT
+#define FBM_OCT 5
+#endif
 float fbm(vec3 p){
   float a = 0.5, s = 0.0;
-  for(int i=0;i<5;i++){ s += a*gnoise(p); p = p*2.03 + 17.1; a *= 0.5; }
+  for(int i=0;i<FBM_OCT;i++){ s += a*gnoise(p); p = p*2.03 + 17.1; a *= 0.5; }
   return s;
 }
 float hash13(vec3 p3){

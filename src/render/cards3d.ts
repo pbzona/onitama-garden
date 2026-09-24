@@ -218,7 +218,7 @@ export class CardsView {
 
   constructor() {
     // flat stones the cards rest on
-    const mat = stoneMaterial({ base: 0x8b867c, dark: 0x6a665e, speck1: 0xa19b8f, speck2: 0x47443f, scale: 1.4, speckScale: 30, speckAmount: 0.45, roughness: 0.85, bump: 0.05, strata: 2 });
+    const mat = stoneMaterial({ octaves: 2, base: 0x8b867c, dark: 0x6a665e, speck1: 0xa19b8f, speck2: 0x47443f, scale: 1.4, speckScale: 30, speckAmount: 0.45, roughness: 0.85, bump: 0.05, strata: 2 });
     const spots: [number, number, number, number][] = [
       [0, 3.95, 2.0, 0.8],
       [0, -3.95, 2.0, 0.8],

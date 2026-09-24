@@ -745,6 +745,11 @@ export class Controller {
     return this.topView;
   }
 
+  /** Camera transitions, piece fades and the victory spin need full frame rate. */
+  isAnimating() {
+    return this.camAnimating || this.stage.controls.autoRotate && this.playing;
+  }
+
   /** Called on user camera input (OrbitControls 'start'/'change'). */
   noteCameraInput() {
     this.lastCamInput = this.clock;

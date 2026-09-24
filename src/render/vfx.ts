@@ -347,6 +347,10 @@ class PSystem {
     this.mesh.renderOrder = additive ? 20 : 19;
   }
 
+  get count() {
+    return this.ps.length;
+  }
+
   emit(o: PInit) {
     if (this.ps.length >= this.max) return;
     const k = o.intensity ?? 1;
@@ -470,12 +474,12 @@ export class Vfx {
     this.add = new PSystem(2500, atlas, true);
     this.alpha = new PSystem(1500, atlas, false);
     this.group.add(this.alpha.mesh, this.add.mesh);
-    // fixed pool of flash lights, always present (intensity 0 when idle) so light count never changes
-    for (let i = 0; i < 3; i++) {
-      const l = new THREE.PointLight(0xffffff, 0, 7, 2);
-      this.group.add(l);
-      this.lights.push({ l, busyUntil: 0 });
-    }
+    // One reusable flash light, hidden when idle. An invisible light costs nothing per pixel, and
+    // prewarm() compiles shader variants for both states so toggling it never causes a hitch.
+    const l = new THREE.PointLight(0xffffff, 0, 7, 2);
+    l.visible = false;
+    this.group.add(l);
+    this.lights.push({ l, busyUntil: 0 });
   }
 
   // ---- primitives
@@ -530,13 +534,25 @@ export class Vfx {
     slot.busyUntil = this.clock + dur;
     l.color.set(color);
     l.position.copy(pos);
+    l.visible = true;
     const mine = slot.busyUntil;
     tween(dur, (k) => {
       if (slot.busyUntil !== mine) return; // slot was reused by a newer flash
       l.intensity = intensity * (1 - k) * (1 - k) * (1 - flicker + flicker * Math.random());
     }, { ease: ease.linear }).then(() => {
-      if (slot.busyUntil === mine) l.intensity = 0;
+      if (slot.busyUntil === mine) {
+        l.intensity = 0;
+        l.visible = false;
+      }
     });
+  }
+
+  /** Compile lit materials with the flash light both on and off so the first capture doesn't stall. */
+  prewarm(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
+    for (const s of this.lights) s.l.visible = true;
+    renderer.compile(scene, camera);
+    for (const s of this.lights) s.l.visible = false;
+    renderer.compile(scene, camera);
   }
   shake(amount: number, dur: number) {
     tween(dur, (k) => (this.shakeAmp = Math.max(this.shakeAmp * 0.9, amount * (1 - k) * (1 - k))), { ease: ease.linear }).then(() => (this.shakeAmp = 0));
@@ -568,6 +584,11 @@ export class Vfx {
       d.y = Math.abs(d.y) * 0.8 + 0.2;
       this.add.emit({ p: at, v: d.multiplyScalar(rnd(0.5, 1) * speed), life: rnd(0.6, 1) * life, size: [0.1, 0.02], color: [c0, c1], tile: 4, stretch: 0.09, grav: -5, drag: 1.5, intensity: 2.2 });
     }
+  }
+
+  /** True while any effect is still animating (used to keep the frame rate up). */
+  isActive() {
+    return this.updaters.size > 0 || this.add.count > 0 || this.alpha.count > 0 || this.shakeAmp > 0;
   }
 
   // ---- frame hooks

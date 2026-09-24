@@ -81,7 +81,7 @@ export class FallingLeaves {
   constructor(private sources: THREE.Vector3[], count = 90) {
     const mat = new THREE.MeshStandardMaterial({ alphaMap: mapleLeafTexture(), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.8, emissive: 0x2a0500 });
     this.mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.2, 0.2), mat, count);
-    this.mesh.castShadow = true;
+    this.mesh.castShadow = false; // tiny, and it would force a shadow-map re-render every frame
     this.mesh.frustumCulled = false;
     const palette = [0xb3261e, 0xd9481f, 0xe0662a, 0x9e1b1b, 0xe8883a].map((c) => new THREE.Color(c));
     for (let i = 0; i < count; i++) {
