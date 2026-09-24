@@ -1,0 +1,52 @@
+.benchmark-mode { overflow: auto; background: #11100e; }
+.benchmark-mode > :not(#app):not(#loading):not(#benchmark-suite) { display: none !important; }
+.benchmark-mode #app { position: fixed; filter: brightness(.24) saturate(.7); }
+.benchmark-mode #loading.fade { display: none; }
+
+#benchmark-suite { position: relative; z-index: 100; min-height: 100%; padding: 32px; color: #eee3cc; font-family: var(--sans); }
+.bench-shell { width: min(1120px, 100%); margin: 0 auto; padding: 28px; border: 1px solid rgba(238,227,204,.14); border-radius: 20px; background: rgba(18,16,14,.94); box-shadow: 0 30px 100px rgba(0,0,0,.5); backdrop-filter: blur(18px); }
+.bench-head { display: flex; justify-content: space-between; gap: 28px; align-items: flex-start; }
+.bench-eyebrow { color: #d9a54a; font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+.bench-head h1 { margin: 6px 0 4px; font-family: var(--serif); font-size: clamp(28px, 4vw, 46px); font-weight: 600; }
+.bench-head p { max-width: 650px; margin: 0; color: var(--bone-dim); }
+.bench-back { flex: none; padding: 9px 13px; color: var(--bone); border: 1px solid var(--line); border-radius: 10px; text-decoration: none; }
+
+.bench-meta { display: grid; grid-template-columns: 2fr repeat(5, 1fr); gap: 1px; margin: 26px 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--line); }
+.bench-meta div { min-width: 0; padding: 13px 14px; background: #1d1a16; }
+.bench-meta span { display: block; margin-bottom: 4px; color: var(--bone-dim); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+.bench-meta strong { display: block; overflow: hidden; font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+
+.bench-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.bench-controls label { display: grid; gap: 5px; color: var(--bone-dim); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.bench-controls select, .bench-controls button { min-height: 40px; border: 1px solid var(--line); border-radius: 9px; background: #211e19; color: var(--bone); font: inherit; }
+.bench-controls select { min-width: 145px; padding: 0 34px 0 12px; }
+.bench-controls button { padding: 0 17px; cursor: pointer; }
+.bench-controls #bench-run { border-color: rgba(217,165,74,.55); background: #b27d31; color: #171009; font-weight: 700; }
+.bench-controls button:disabled, .bench-controls select:disabled { cursor: default; opacity: .45; }
+
+.bench-progress { height: 4px; margin-top: 18px; overflow: hidden; border-radius: 9px; background: rgba(238,227,204,.08); }
+.bench-progress span { display: block; width: 0; height: 100%; background: #d9a54a; transition: width .15s linear; }
+.bench-status { min-height: 22px; margin: 10px 0 16px; color: var(--bone-dim); font-size: 13px; }
+.bench-results { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+.bench-results table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.bench-results th { padding: 11px 14px; color: var(--bone-dim); background: #171512; font-size: 10px; letter-spacing: .1em; text-align: right; text-transform: uppercase; }
+.bench-results th:first-child { text-align: left; }
+.bench-results td { padding: 13px 14px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.bench-results td:first-child { min-width: 280px; text-align: left; white-space: normal; }
+.bench-results td strong, .bench-results td span { display: block; }
+.bench-results td span { margin-top: 3px; color: var(--bone-dim); font-size: 11px; }
+.bench-results .bench-empty { padding: 34px; color: var(--bone-dim); text-align: center; }
+
+.bench-json { margin-top: 18px; border: 1px solid var(--line); border-radius: 10px; background: #171512; }
+.bench-json summary { padding: 12px 14px; cursor: pointer; }
+.bench-json pre { max-height: 420px; margin: 0; padding: 14px; overflow: auto; border-top: 1px solid var(--line); color: #d6c8ae; font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.bench-note { margin: 13px 2px 0; color: rgba(238,227,204,.45); font-size: 11px; }
+
+@media (max-width: 850px) {
+  #benchmark-suite { padding: 14px; }
+  .bench-shell { padding: 18px; }
+  .bench-head { display: block; }
+  .bench-back { display: inline-block; margin-top: 16px; }
+  .bench-meta { grid-template-columns: repeat(2, 1fr); }
+  .bench-meta div:first-child { grid-column: 1 / -1; }
+}
