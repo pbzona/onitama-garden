@@ -129,7 +129,7 @@ export class Sound {
   }
 
   /** Synthesised one-shots for the card capture effects. */
-  fx(kind: 'slash' | 'fire' | 'water' | 'whoosh' | 'snap' | 'boom' | 'shimmer' | 'hoof' | 'zap' | 'hiss') {
+  fx(kind: 'slash' | 'fire' | 'water' | 'whoosh' | 'snap' | 'boom' | 'shimmer' | 'hoof' | 'zap' | 'hiss' | 'reward') {
     if (!this.ctx) return;
     const ctx = this.ctx;
     const t = ctx.currentTime;
@@ -196,6 +196,16 @@ export class Sound {
         o.start(t);
         o.stop(t + 0.75);
         for (let i = 0; i < 8; i++) this.noise(0.03, t + Math.random() * 0.6, this.sfx, 'highpass', 5000, 1, 0.25);
+        break;
+      }
+      case 'reward': {
+        // a soft rising two-note chime over a warm low bloom
+        const notes = [[784.0, 1174.7], [880.0, 1318.5], [659.3, 987.8]][Math.floor(Math.random() * 3)];
+        notes.forEach((f, i) => {
+          this.tone(f, t + i * 0.09, 1.4, 0.05, 'sine');
+          this.tone(f * 2, t + i * 0.09, 0.6, 0.012, 'sine');
+        });
+        this.tone(130, t, 0.5, 0.12, 'sine', this.sfx, 110);
         break;
       }
       case 'hiss': {

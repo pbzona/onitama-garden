@@ -423,6 +423,26 @@ const randDir = () => {
   return V(s * Math.cos(t), u, s * Math.sin(t));
 };
 
+/** Two-colour palette per card for the shared reward particles. */
+const PALETTES: Record<string, [number, number]> = {
+  Tiger: [0xffb347, 0xff5a1f],
+  Dragon: [0xff7a1e, 0xffd27a],
+  Frog: [0x7cd4ff, 0x5ee8b8],
+  Rabbit: [0xfff4d6, 0xb8c8ff],
+  Crab: [0x62f0d8, 0x9fe8ff],
+  Elephant: [0xffd49a, 0xe8b87a],
+  Goose: [0xffffff, 0xbfe0ff],
+  Rooster: [0xffc75a, 0xff8a3a],
+  Monkey: [0xffc85a, 0xfff0a0],
+  Mantis: [0x7dff9a, 0xc8ff7a],
+  Horse: [0xffd7a0, 0xff9a5a],
+  Ox: [0xfff0d8, 0xffb070],
+  Crane: [0xffffff, 0xff6a5a],
+  Boar: [0xffd49a, 0xd89a6a],
+  Eel: [0x9fd8ff, 0x7a8aff],
+  Cobra: [0x7dff6a, 0xd8ff5a],
+};
+
 export interface CaptureCtx {
   at: THREE.Vector3; // capture square centre (board surface)
   from: THREE.Vector3; // attacker's origin square
@@ -450,6 +470,12 @@ export class Vfx {
     this.add = new PSystem(2500, atlas, true);
     this.alpha = new PSystem(1500, atlas, false);
     this.group.add(this.alpha.mesh, this.add.mesh);
+    // fixed pool of flash lights, always present (intensity 0 when idle) so light count never changes
+    for (let i = 0; i < 3; i++) {
+      const l = new THREE.PointLight(0xffffff, 0, 7, 2);
+      this.group.add(l);
+      this.lights.push({ l, busyUntil: 0 });
+    }
   }
 
   // ---- primitives
@@ -495,13 +521,21 @@ export class Vfx {
       }
     }, dur);
   }
+  private lights: { l: THREE.PointLight; busyUntil: number }[] = [];
+  private clock = 0;
   private flash(pos: THREE.Vector3, color: THREE.ColorRepresentation, intensity: number, dur: number, flicker = 0) {
-    const l = new THREE.PointLight(color, 0, 7, 2);
+    dur *= 1.3; // gentler tail
+    const slot = this.lights.reduce((a, b) => (a.busyUntil <= b.busyUntil ? a : b));
+    const l = slot.l;
+    slot.busyUntil = this.clock + dur;
+    l.color.set(color);
     l.position.copy(pos);
-    this.group.add(l);
-    tween(dur, (k) => (l.intensity = intensity * (1 - k) * (1 - flicker + flicker * Math.random())), { ease: ease.outCubic }).then(() => {
-      this.group.remove(l);
-      l.dispose();
+    const mine = slot.busyUntil;
+    tween(dur, (k) => {
+      if (slot.busyUntil !== mine) return; // slot was reused by a newer flash
+      l.intensity = intensity * (1 - k) * (1 - k) * (1 - flicker + flicker * Math.random());
+    }, { ease: ease.linear }).then(() => {
+      if (slot.busyUntil === mine) l.intensity = 0;
     });
   }
   shake(amount: number, dur: number) {
@@ -526,7 +560,7 @@ export class Vfx {
   private fade(o: THREE.Mesh | THREE.Object3D, from: number, to: number, dur: number, delay = 0) {
     const mats: THREE.MeshBasicMaterial[] = [];
     o.traverse((c) => (c as THREE.Mesh).material && mats.push((c as THREE.Mesh).material as THREE.MeshBasicMaterial));
-    return tween(dur, (k) => mats.forEach((m) => (m.opacity = from + (to - from) * k)), { delay, ease: ease.linear });
+    return tween(dur * 1.35, (k) => mats.forEach((m) => (m.opacity = from + (to - from) * k)), { delay, ease: ease.inOutSine });
   }
   private sparks(at: THREE.Vector3, n: number, c0: THREE.ColorRepresentation, c1: THREE.ColorRepresentation, speed = 3, life = 0.5) {
     for (let i = 0; i < this.n(n); i++) {
@@ -538,6 +572,7 @@ export class Vfx {
 
   // ---- frame hooks
   update(dt: number, t: number) {
+    this.clock += dt;
     this.add.update(dt, t);
     this.alpha.update(dt, t);
     for (const b of this.billboards) b.quaternion.copy(this.camera.quaternion);
@@ -559,7 +594,68 @@ export class Vfx {
 
   capture(cardName: string, ctx: CaptureCtx) {
     const fn = (this as any)['fx' + cardName] as ((c: CaptureCtx) => void) | undefined;
+    this.reward(ctx, PALETTES[cardName] ?? PALETTES.Tiger);
     (fn ?? this.fxTiger).call(this, ctx);
+  }
+
+  /**
+   * Shared "reward" layer under every card effect: an impact flash, a burst of lingering coloured
+   * motes that fill out the volume, a warm ground glow, and rising afterglow so nothing ends abruptly.
+   */
+  private reward({ at }: CaptureCtx, [c1, c2]: [number, number]) {
+    const hot = new THREE.Color(c1).lerp(new THREE.Color(0xffffff), 0.6);
+    // impact core flash
+    const core = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.glowMat(hot, 1.6, 0, this.softDisc));
+    core.position.copy(at).add(V(0, 0.45, 0));
+    this.spawn(core, true);
+    tween(0.34, (k) => {
+      core.scale.setScalar(0.12 + 0.6 * ease.outCubic(k));
+      (core.material as THREE.MeshBasicMaterial).opacity = (1 - k) * (1 - k);
+    }, { ease: ease.linear }).then(() => this.kill(core));
+    // coloured glow pooling on the slate
+    const gg = new THREE.PlaneGeometry(2, 2);
+    gg.rotateX(-Math.PI / 2);
+    const glow = new THREE.Mesh(gg, this.glowMat(c1, 0.9, 0, this.softDisc));
+    glow.position.copy(at).setY(TOP + 0.008);
+    glow.renderOrder = 17;
+    glow.scale.setScalar(1.25);
+    this.spawn(glow);
+    tween(1.8, (k) => ((glow.material as THREE.MeshBasicMaterial).opacity = Math.min(1, k * 8) * (1 - k) * (1 - k) * 0.42), { ease: ease.linear }).then(() => this.kill(glow));
+    // burst of lingering motes
+    const pick = () => (Math.random() < 0.55 ? c1 : c2);
+    for (let i = 0; i < this.n(48); i++) {
+      const d = randDir();
+      d.y = Math.abs(d.y) * 0.9 + 0.15;
+      const star = Math.random() < 0.14;
+      this.add.emit({
+        p: at.clone().add(V(0, 0.4, 0)),
+        v: d.multiplyScalar(rnd(1.1, 3.0)),
+        life: rnd(1.1, 2.0),
+        size: star ? [0.16, 0.04] : [rnd(0.06, 0.1), 0.015],
+        color: [pick(), pick()],
+        tile: star ? 6 : 0,
+        drag: 2.6,
+        grav: 0.35,
+        spin: star ? rnd(-3, 3) : 0,
+        wobble: 0.25,
+        intensity: 2.2,
+      });
+    }
+    // afterglow: embers keep rising for a beat after the main effect
+    this.stream(1.4, 28, () => {
+      const a = Math.random() * Math.PI * 2, r = rnd(0.1, 0.75);
+      this.add.emit({ p: V(at.x + Math.cos(a) * r, TOP + rnd(0.05, 0.5), at.z + Math.sin(a) * r), v: V(0, rnd(0.3, 0.8), 0), life: rnd(1.2, 1.9), size: [0.055, 0.015], color: [c2, c1], tile: 0, wobble: 0.45, intensity: 2 });
+    });
+    this.shake(0.035, 0.2);
+    tween(0.08, () => {}).then(() => this.sound.fx('reward'));
+  }
+
+  /** The captured stone breaks up into the card's colours as it sinks into the gravel. */
+  dissolve(pos: THREE.Vector3, cardName: string) {
+    const [c1, c2] = PALETTES[cardName] ?? PALETTES.Tiger;
+    this.stream(0.9, 40, () =>
+      this.add.emit({ p: pos.clone().add(V(rnd(-0.25, 0.25), rnd(0, 0.4), rnd(-0.25, 0.25))), v: V(rnd(-0.2, 0.2), rnd(0.4, 1.0), rnd(-0.2, 0.2)), life: rnd(0.9, 1.5), size: [0.06, 0.015], color: [Math.random() < 0.5 ? c1 : c2, c1], tile: 0, wobble: 0.5, intensity: 2 }),
+    );
   }
 
   /** Tiger 虎 — three raking claw slashes and a spray of sparks. */

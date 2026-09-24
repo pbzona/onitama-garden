@@ -27,7 +27,7 @@ for (const c of which) {
     o.vfx.capture(c, { at, from, dir });
   }, c);
   await frames(at);
-  await page.screenshot({ path: `shots/fx-${c}.png` });
+  await page.screenshot({ path: `shots/fx-${c}${process.env.SUFFIX || ''}.png` });
   await page.evaluate(() => window.__onitama.setDt(1.0));
   await frames(4); // fast-forward to let it finish
   await page.evaluate(() => window.__onitama.setDt(0.05));

@@ -464,7 +464,7 @@ export class Controller {
     this.busy = true;
     this.refreshUsable();
     this.hud.hint('');
-    this.hud.log(prev.turn, moveName(m));
+    this.hud.log(prev.turn, moveName(m), m.to >= 0 && prev.board[m.to] ? prev.board[m.to] : 0);
     this.hud.undoBtn.disabled = true;
     await this.animate(prev, m);
     if (g !== this.gen) return;
@@ -529,8 +529,21 @@ export class Controller {
     if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1);
     dir.normalize();
     this.vfx.capture(CARDS[card].name, { at: b.clone().setY(TOP), from: a.clone(), dir });
+    this.lastCaptureCard = CARDS[card].name;
     setTweenSpeed(0.2);
     setTimeout(() => setTweenSpeed(1), 110);
+    // brief bloom swell and a gentle camera push-in make the hit land
+    const bloom = this.stage.bloom;
+    const cam = this.stage.camera;
+    const f0 = cam.fov;
+    tween(0.7, (k) => (bloom.strength = 0.42 + 0.45 * Math.sin(k * Math.PI) * (1 - k * 0.4)), { ease: ease.linear }).then(() => (bloom.strength = 0.42));
+    tween(0.45, (k) => {
+      cam.fov = f0 - 1.4 * Math.sin(k * Math.PI);
+      cam.updateProjectionMatrix();
+    }, { ease: ease.outCubic }).then(() => {
+      cam.fov = f0;
+      cam.updateProjectionMatrix();
+    });
   }
 
   /** The captured stone is flung off the slab and swallowed by the gravel. */
@@ -558,6 +571,7 @@ export class Controller {
     }, { ease: ease.linear }).then(async () => {
       this.sound.thud();
       this.dust.burst(land.clone().setY(0.05), 22, 0xcfc2a3, 1.4);
+      this.vfx.dissolve(land.clone().setY(0.1), this.lastCaptureCard);
       await tween(1.6, (k) => {
         p.mesh.position.y = land.y - k * 0.95;
         p.mesh.rotation.x += 0.004;
@@ -565,6 +579,8 @@ export class Controller {
       this.pieces.group.remove(p.mesh);
     });
   }
+
+  private lastCaptureCard = 'Tiger';
 
   private async animateCards(prev: GameState, m: Move) {
     const pl = prev.turn;
@@ -657,7 +673,7 @@ export class Controller {
     this.pieces.sync(this.state);
     this.cards.layout(this.state.hands, this.state.side, this.state.turn);
     this.clearSelection();
-    this.hud.rebuildLog(this.history.map((h) => ({ pl: h.state.turn, text: moveName(h.move) })));
+    this.hud.rebuildLog(this.history.map((h) => ({ pl: h.state.turn, text: moveName(h.move), captured: h.move.to >= 0 ? h.state.board[h.move.to] : 0 })));
     const last = this.history[this.history.length - 1];
     this.board.setLastMove(last ? last.move.from : -1, last ? last.move.to : -1);
     if (this.mode === 'hotseat') this.turnCamera(this.state.turn, 0.8);

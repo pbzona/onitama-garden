@@ -24,7 +24,7 @@ Click a card, then a stone, then a glowing square (the card and stone can be pic
 
 ## Capture effects
 
-Every capture plays an effect themed on the card that made it, with a short hit-stop:
+Every capture plays an effect themed on the card that made it. Underneath it, a shared "reward" layer adds an impact flash, a burst of lingering motes in the card's colours, a glow on the slate, rising afterglow, a bloom swell with a slight camera push-in, a tiny screen shake and a soft chime. The captured stone dissolves into the same colours as it sinks. Captures are marked in the move list.
 
 | Card | Effect | Card | Effect |
 |---|---|---|---|

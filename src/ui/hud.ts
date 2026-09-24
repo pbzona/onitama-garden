@@ -29,10 +29,22 @@ export class Hud {
     this.hintEl.classList.toggle('alert', alert);
   }
 
-  log(pl: Player, text: string) {
+  /** captured: piece code taken by this move (0 = none). 1/2 = Granite student/master, 3/4 = Basalt. */
+  log(pl: Player, text: string, captured = 0) {
     const d = document.createElement('div');
     d.className = pl === 0 ? 'p0' : 'p1';
-    d.textContent = text;
+    const t = document.createElement('span');
+    t.textContent = text;
+    d.appendChild(t);
+    if (captured) {
+      d.classList.add('cap');
+      const m = document.createElement('span');
+      const victim = captured <= 2 ? 'g' : 'b';
+      const master = captured === 2 || captured === 4;
+      m.className = `capmark ${victim}${master ? ' master' : ''}`;
+      m.title = `took a ${captured <= 2 ? 'Granite' : 'Basalt'} ${master ? 'Master' : 'student'}`;
+      d.appendChild(m);
+    }
     this.logEl.appendChild(d);
     while (this.logEl.children.length > 8) this.logEl.firstChild!.remove();
   }
@@ -41,9 +53,9 @@ export class Hud {
     this.logEl.innerHTML = '';
   }
 
-  rebuildLog(entries: { pl: Player; text: string }[]) {
+  rebuildLog(entries: { pl: Player; text: string; captured?: number }[]) {
     this.clearLog();
-    for (const e of entries.slice(-8)) this.log(e.pl, e.text);
+    for (const e of entries.slice(-8)) this.log(e.pl, e.text, e.captured ?? 0);
   }
 
   /**
