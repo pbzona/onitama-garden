@@ -177,7 +177,12 @@ async function boot() {
   const markActive = () => (lastActiveAt = performance.now());
   for (const ev of ['pointermove', 'pointerdown', 'wheel', 'touchmove'] as const) app.addEventListener(ev, markActive, { passive: true });
   window.addEventListener('keydown', markActive);
-  stage.controls.addEventListener('change', markActive);
+  // Only a real drag counts as camera activity. (OrbitControls also fires 'change' every frame while
+  // auto-rotating, which used to pin the menu and victory screen at 60 fps.) 'end' + the 1.5 s grace
+  // below covers the damping glide after release.
+  let dragging = false;
+  stage.controls.addEventListener('start', () => ((dragging = true), markActive()));
+  stage.controls.addEventListener('end', () => ((dragging = false), markActive()));
   let lastRender = 0;
   // Adaptive resolution: if we can't hold 60 fps while active, render fewer pixels.
   let emaInterval = 16.7, slowFrames = 0, fastFrames = 0;
@@ -185,10 +190,12 @@ async function boot() {
     requestAnimationFrame(loop);
     if ((window as any).__benchPause) return;
     const moving = busy() || vfx.isActive() || ctl.isAnimating();
-    const active = moving || now - lastActiveAt < 1500;
+    const active = moving || dragging || now - lastActiveAt < 1500;
     // hidden tabs: no visible output, so never wake the GPU (rAF usually pauses anyway)
     if (document.hidden) return;
     const target = !document.hasFocus() ? UNFOCUSED_FPS : active ? ACTIVE_FPS : IDLE_FPS;
+    pace.active = active;
+    pace.target = target;
     if (!FIXED_DT && now - lastRender < 1000 / target - 2) return;
     const interval = now - lastRender;
     lastRender = now;
@@ -206,10 +213,8 @@ async function boot() {
     flies.setPixelScale(stage.renderer.getPixelRatio() * (app.clientHeight / 900));
     ctl.update(dt, t);
     vfx.update(dt, t);
-    // shadows are static unless stones/cards are moving (or a card is lifting under the cursor).
-    // Only piece/card/light tweens (busy()) move shadow casters — particles, screen shake and
-    // camera fly-to/auto-rotate (the rest of `moving`) never touch the sun's fixed shadow camera.
-    if (busy() || now - lastActiveAt < 500) stage.invalidateShadows();
+    // shadows are static unless stones/cards are moving (or a card is lifting under the cursor)
+    if (moving || now - lastActiveAt < 500) stage.invalidateShadows();
     vfx.preRender();
     stage.render(t);
     vfx.postRender();
@@ -232,7 +237,8 @@ async function boot() {
     }
   };
   // expose for debugging / automated checks
-  (window as any).__onitama = { ctl, stage, cards, legalMoves, squarePos, vfx, setDt: (d: number) => (FIXED_DT = d) };
+  const pace = { active: false, target: 0 };
+  (window as any).__onitama = { ctl, stage, cards, legalMoves, squarePos, vfx, pace, setDt: (d: number) => (FIXED_DT = d) };
   requestAnimationFrame(loop);
 
   requestAnimationFrame(() => {

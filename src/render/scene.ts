@@ -217,7 +217,9 @@ export class Stage {
     this.camera.updateProjectionMatrix();
   }
 
-  render(t: number) {
+  /** refreshShadows: force a shadow-map redraw this frame (used by the /benchmarks suite from PR #3). */
+  render(t: number, refreshShadows = false) {
+    if (refreshShadows) this.invalidateShadows();
     this.grade.uniforms.uTime.value = t % 100;
     this.composer.render();
   }
