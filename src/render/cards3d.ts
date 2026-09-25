@@ -282,6 +282,12 @@ export class CardsView {
     return [...this.cards.values()].map((c) => c.face);
   }
 
+  /** True while any card is still rising/settling from a hover or selection (it casts a shadow). */
+  isLifting() {
+    for (const c of this.cards.values()) if (Math.abs(c.liftTarget - c.lift) > 0.002) return true;
+    return false;
+  }
+
   update(dt: number, t: number) {
     for (const c of this.cards.values()) {
       c.liftTarget = c.selected ? 0.16 : c.hovered && c.usable ? 0.08 : 0;

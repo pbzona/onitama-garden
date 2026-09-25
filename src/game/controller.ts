@@ -745,9 +745,9 @@ export class Controller {
     return this.topView;
   }
 
-  /** Camera transitions, piece fades and the victory spin need full frame rate. */
+  /** Scripted camera transitions need full frame rate (the slow victory spin is fine at the idle rate). */
   isAnimating() {
-    return this.camAnimating || this.stage.controls.autoRotate && this.playing;
+    return this.camAnimating;
   }
 
   /** Called on user camera input (OrbitControls 'start'/'change'). */
