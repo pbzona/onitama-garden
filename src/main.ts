@@ -192,8 +192,10 @@ async function boot() {
     flies.setPixelScale(stage.renderer.getPixelRatio() * (app.clientHeight / 900));
     ctl.update(dt, t);
     vfx.update(dt, t);
-    // shadows are static unless stones/cards are moving (or a card is lifting under the cursor)
-    if (moving || now - lastActiveAt < 500) stage.invalidateShadows();
+    // shadows are static unless stones/cards are moving (or a card is lifting under the cursor).
+    // Only piece/card/light tweens (busy()) move shadow casters — particles, screen shake and
+    // camera fly-to/auto-rotate (the rest of `moving`) never touch the sun's fixed shadow camera.
+    if (busy() || now - lastActiveAt < 500) stage.invalidateShadows();
     vfx.preRender();
     stage.render(t);
     vfx.postRender();
