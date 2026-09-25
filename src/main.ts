@@ -1,3 +1,4 @@
+import { inject } from '@vercel/analytics';
 import { store } from './store.ts';
 import './ui/style.css';
 import * as THREE from 'three';
@@ -30,6 +31,9 @@ const ACTIVE_FPS = Math.min(120, Math.max(15, FPS_OVERRIDE || 60));
 const IDLE_FPS = Math.min(ACTIVE_FPS, FPS_OVERRIDE || 30);
 
 async function boot() {
+  // Initialize Vercel Analytics
+  inject();
+  
   // Card faces are painted onto canvases, so the brush/serif fonts must be ready first.
   await Promise.race([
     Promise.all([
