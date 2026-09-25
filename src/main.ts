@@ -8,7 +8,7 @@ import { BoardView, SLAB } from './render/board.ts';
 import { PiecesView } from './render/pieces.ts';
 import { CardsView } from './render/cards3d.ts';
 import { Dust, Fireflies, FallingLeaves } from './render/effects.ts';
-import { busy as tweensBusy, tickTweens } from './render/tween.ts';
+import { busy, tickTweens } from './render/tween.ts';
 import { Vfx } from './render/vfx.ts';
 import { Controller, type Mode } from './game/controller.ts';
 import { Hud, initSeg, overlay, segValue } from './ui/hud.ts';
@@ -21,13 +21,11 @@ import { squarePos } from './render/board.ts';
 const params = new URLSearchParams(location.search);
 const BENCHMARK_MODE = location.pathname.replace(/\/+$/, '') === '/benchmarks';
 let FIXED_DT = params.has('dt') ? +params.get('dt')! : params.has('fast') ? 0.3 : 0;
-// The full-resolution HDR/bloom pipeline is intentionally high quality, but it
-// needn't run at interaction speed while the board is idle. Keep 60 fps for
-// input and authored animation, then settle to 30 fps for ambient motion. A
-// ?fps=N override remains available for profiling and forces a fixed cadence.
+// ?fps=N forces a fixed cadence for profiling (from PR #1). Otherwise: 60 active / 30 idle / 15 unfocused.
 const FPS_OVERRIDE = Number(params.get('fps')) || 0;
 const ACTIVE_FPS = Math.min(120, Math.max(15, FPS_OVERRIDE || 60));
 const IDLE_FPS = Math.min(ACTIVE_FPS, FPS_OVERRIDE || 30);
+const UNFOCUSED_FPS = Math.min(IDLE_FPS, FPS_OVERRIDE || 15);
 
 async function boot() {
   // Card faces are painted onto canvases, so the brush/serif fonts must be ready first.
@@ -52,7 +50,7 @@ async function boot() {
   const board = new BoardView();
   const pieces = new PiecesView();
   const cards = new CardsView();
-  const sand = createSand(SLAB / 2, [...garden.features, ...cards.plinthFeatures]);
+  const sand = createSand(stage.renderer, SLAB / 2, [...garden.features, ...cards.plinthFeatures], quality === 'high' ? 2048 : 1024);
   const dust = new Dust();
   const leaves = new FallingLeaves(garden.canopyCenters.filter((_, i) => i % 3 === 0), quality === 'high' ? 90 : 45);
   const flies = new Fireflies(quality === 'high' ? 40 : 20);
@@ -170,34 +168,42 @@ async function boot() {
   const timer = new THREE.Timer();
   timer.connect(document);
   let t = 0;
-  let lastFrameAt = -Infinity;
-  let nextAmbientShadowAt = 0;
-  let activeUntil = 0;
-  const keepActive = (ms = 900) => (activeUntil = performance.now() + ms);
-  // Hover/lift feedback and orbit controls should react at 60 fps. Once input
-  // stops, the garden returns to the lower-cost ambient cadence automatically.
-  for (const event of ['pointerdown', 'pointermove', 'wheel', 'keydown'] as const)
-    window.addEventListener(event, () => keepActive(), { passive: true });
-  stage.controls.addEventListener('start', () => keepActive(1500));
   // compile shaders before revealing
-  stage.renderer.compile(stage.scene, stage.camera);
+  vfx.prewarm(stage.renderer, stage.scene, stage.camera);
+  // ---- frame pacing: render only as often as needed.
+  // 60 fps while something moves or the player is interacting, 30 fps when idle (ambient leaves and
+  // fireflies), 15 fps when the window isn't focused; the browser pauses rAF entirely in hidden tabs.
+  let lastActiveAt = performance.now();
+  const markActive = () => (lastActiveAt = performance.now());
+  for (const ev of ['pointermove', 'pointerdown', 'wheel', 'touchmove'] as const) app.addEventListener(ev, markActive, { passive: true });
+  window.addEventListener('keydown', markActive);
+  // Only a real drag counts as camera activity. (OrbitControls also fires 'change' every frame while
+  // auto-rotating, which used to pin the menu and victory screen at 60 fps.) 'end' + the 1.5 s grace
+  // below covers the damping glide after release.
+  let dragging = false;
+  stage.controls.addEventListener('start', () => ((dragging = true), markActive()));
+  stage.controls.addEventListener('end', () => ((dragging = false), markActive()));
+  let lastRender = 0;
+  // Adaptive resolution: if we can't hold 60 fps while active, render fewer pixels.
+  let emaInterval = 16.7, slowFrames = 0, fastFrames = 0;
   const loop = (now: number) => {
     requestAnimationFrame(loop);
-    // requestAnimationFrame can follow 120/144 Hz displays. Skip redundant
-    // callbacks before doing any simulation, uploads, or post-processing work.
-    // A hidden tab has no visible output, so avoid waking the GPU altogether.
-    const animationActive = tweensBusy();
-    const frameMs = 1000 / (animationActive || now < activeUntil ? ACTIVE_FPS : IDLE_FPS);
-    if (document.hidden || now - lastFrameAt < frameMs - 0.5) return;
-    lastFrameAt = now;
+    if ((window as any).__benchPause) return;
+    const moving = busy() || vfx.isActive() || ctl.isAnimating();
+    const active = moving || dragging || now - lastActiveAt < 1500;
+    // hidden tabs: no visible output, so never wake the GPU (rAF usually pauses anyway)
+    if (document.hidden) return;
+    const target = !document.hasFocus() ? UNFOCUSED_FPS : active ? ACTIVE_FPS : IDLE_FPS;
+    pace.active = active;
+    pace.target = target;
+    if (!FIXED_DT && now - lastRender < 1000 / target - 2) return;
+    const interval = now - lastRender;
+    lastRender = now;
     timer.update();
-    const dt = FIXED_DT || Math.min(timer.getDelta(), 0.05);
+    const dt = FIXED_DT || Math.min(timer.getDelta(), 0.1);
     t += dt;
-    // Read this before ticking so the final animated transform is guaranteed to
-    // make it into the cached shadow map.
-    const shadowsMoving = animationActive;
     tickTweens(dt);
-    stage.controls.update();
+    stage.controls.update(dt);
     board.update(dt, t);
     pieces.update(dt, t);
     cards.update(dt, t);
@@ -207,17 +213,32 @@ async function boot() {
     flies.setPixelScale(stage.renderer.getPixelRatio() * (app.clientHeight / 900));
     ctl.update(dt, t);
     vfx.update(dt, t);
+    // shadows are static unless stones/cards are moving (or a card is lifting under the cursor)
+    if (moving || now - lastActiveAt < 500) stage.invalidateShadows();
     vfx.preRender();
-    // The scene's only perpetual moving shadow casters are tiny falling leaves.
-    // Refresh them at 12 Hz; piece/card/camera-effect tweens still refresh every
-    // rendered frame. Shadow resolution and visual filtering remain unchanged.
-    const refreshAmbientShadows = t >= nextAmbientShadowAt;
-    if (refreshAmbientShadows) nextAmbientShadowAt = t + 1 / 12;
-    stage.render(t, shadowsMoving || refreshAmbientShadows);
+    stage.render(t);
     vfx.postRender();
+    if (!FIXED_DT && !FPS_OVERRIDE && target === ACTIVE_FPS && interval < 250) {
+      emaInterval += (interval - emaInterval) * 0.1;
+      if (emaInterval > 21) {
+        fastFrames = 0;
+        if (++slowFrames > 45) {
+          stage.setRenderScale(stage.renderScale - 0.1);
+          slowFrames = 0;
+          emaInterval = 16.7;
+        }
+      } else if (emaInterval < 17.6 && stage.renderScale < 1) {
+        slowFrames = 0;
+        if (++fastFrames > 300) {
+          stage.setRenderScale(stage.renderScale + 0.05);
+          fastFrames = 0;
+        }
+      }
+    }
   };
   // expose for debugging / automated checks
-  (window as any).__onitama = { ctl, stage, cards, legalMoves, squarePos, vfx, setDt: (d: number) => (FIXED_DT = d) };
+  const pace = { active: false, target: 0 };
+  (window as any).__onitama = { ctl, stage, cards, legalMoves, squarePos, vfx, pace, setDt: (d: number) => (FIXED_DT = d) };
   requestAnimationFrame(loop);
 
   requestAnimationFrame(() => {

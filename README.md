@@ -79,7 +79,17 @@ scripts/      inline.mjs, shot.mjs / e2e.mjs (headless screenshots and click-thr
 
 ## Graphics settings
 
-**High** uses 2× DPR, a 4096 shadow map, and 4× MSAA. **Light** (the default on touch devices) uses 1.25× DPR, a 2048 shadow map, 2× MSAA, and fewer particles.
+**High** renders at up to 1.5× device pixel ratio with a 2048 shadow map and 4× MSAA. **Light** (the default on touch devices) renders at 1× with a 1024 shadow map, 2× MSAA and fewer particles.
+
+### Performance
+
+- **Frame pacing:** the game renders at up to 60 fps while stones, cards or the camera are animating or you're interacting, 30 fps when idle (including the slow menu and victory spins), and 15 fps when the window isn't focused. It never runs uncapped on high-refresh monitors, and browsers pause it completely in background tabs.
+- **Adaptive resolution:** if it can't hold 60 fps during play, the render scale steps down (to as low as 50%) and creeps back up when there's headroom.
+- **Baked once at startup:** the raked-sand pattern (a texture instead of per-pixel maths over every rock) and the dusk sky (a cube map).
+- **Shadows on demand:** the shadow map only re-renders while stones or cards are moving (or a card is lifting under the cursor).
+- **Cheaper scenery shading:** walls, rocks, moss and trees use 2-octave noise and standard materials; only the stones and board use the heavier physical shading.
+- `?fps=N` forces a fixed frame rate for profiling (contributed in PR #1 by @raidalt, along with the original frame-scheduling work).
+- **`/benchmarks`** (contributed in PR #3 by @raidalt) measures real per-frame GPU time with WebGL timer queries and isolates shadows, bloom, grading and sand. Add `?quality=low` or `?autorun=1`. `vercel.json` rewrites the route to the app.
 
 *Onitama* was designed by Shimpei Sato and is published by Arcane Wonders. This is an unofficial fan implementation with original art.
 

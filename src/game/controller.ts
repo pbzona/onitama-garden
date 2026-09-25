@@ -745,6 +745,11 @@ export class Controller {
     return this.topView;
   }
 
+  /** Scripted camera transitions need full frame rate (the slow victory spin is fine at the idle rate). */
+  isAnimating() {
+    return this.camAnimating;
+  }
+
   /** Called on user camera input (OrbitControls 'start'/'change'). */
   noteCameraInput() {
     this.lastCamInput = this.clock;
