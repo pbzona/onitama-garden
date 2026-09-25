@@ -19,6 +19,7 @@ import { squarePos } from './render/board.ts';
 
 // ?fast = large fixed time steps (for automated testing on software renderers)
 const params = new URLSearchParams(location.search);
+const BENCHMARK_MODE = location.pathname.replace(/\/+$/, '') === '/benchmarks';
 let FIXED_DT = params.has('dt') ? +params.get('dt')! : params.has('fast') ? 0.3 : 0;
 // The full-resolution HDR/bloom pipeline is intentionally high quality, but it
 // needn't run at interaction speed while the board is idle. Keep 60 fps for
@@ -39,7 +40,11 @@ async function boot() {
   ]);
 
   const coarse = matchMedia('(pointer: coarse)').matches;
-  const quality = (store.get('onitama.quality') as Quality) || (coarse ? 'low' : 'high');
+  const benchmarkQuality = params.get('quality');
+  const quality =
+    BENCHMARK_MODE && (benchmarkQuality === 'high' || benchmarkQuality === 'low')
+      ? benchmarkQuality
+      : (store.get('onitama.quality') as Quality) || (coarse ? 'low' : 'high');
   
   const app = document.getElementById('app')!;
   const stage = new Stage(app, quality);
@@ -61,6 +66,15 @@ async function boot() {
   vfx.scale = quality === 'high' ? 1 : 0.6;
   stage.scene.add(vfx.group);
   const ctl = new Controller(stage, board, pieces, cards, dust, leaves, garden, sound, hud, vfx);
+
+  if (BENCHMARK_MODE) {
+    stage.controls.autoRotate = false;
+    stage.renderer.compile(stage.scene, stage.camera);
+    const { mountBenchmarkSuite } = await import('./benchmarks.ts');
+    mountBenchmarkSuite({ stage, sand: sand.mesh });
+    document.getElementById('loading')!.classList.add('fade');
+    return;
+  }
 
   // ---- menu wiring
   const savedMode = store.get('onitama.mode') ?? 'ai';
